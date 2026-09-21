@@ -44,7 +44,7 @@ export function Vote({
     <div className="vote-wrap">
       <button
         className={"vote " + (state.voted ? "voted" : "")}
-        aria-label={`${state.voted ? "Remove vote for" : "Upvote"} ${nominee.company}`}
+        aria-label={`${state.voted ? "Remove your vote for" : "Give a shit about"} ${nominee.company}`}
         aria-pressed={state.voted}
         disabled={busy || closed}
         onClick={async () => {
@@ -70,6 +70,7 @@ export function Vote({
       >
         <ArrowUp size={17} />
         <span>{state.count.toLocaleString()}</span>
+        <small>{state.voted ? "GIVEN" : "GIVE A SHIT"}</small>
       </button>
       {error && (
         <span role="alert" className="vote-error">
@@ -155,8 +156,14 @@ export function NomineeList({
           ))
         ) : (
           <div className="empty">
-            <h3>A suspiciously clean slate.</h3>
-            <p>No nominations here yet. Know something that got worse?</p>
+            <div className="empty-plunger" aria-hidden="true">
+              ↟
+            </div>
+            <h3>The bowl is clean—for now.</h3>
+            <p>
+              No nominations have hit the fan yet. Know something that got
+              worse?
+            </p>
             <Link className="button" href="/submit">
               Make the first nomination <ArrowUpRight size={16} />
             </Link>

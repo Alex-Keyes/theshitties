@@ -1,10 +1,13 @@
 @import "tailwindcss";
 :root {
-  --paper: #f6f3ea;
-  --ink: #26291f;
-  --muted: #737367;
-  --gold: #a0823e;
-  --line: #d9d7ca;
+  --paper: #f6f0e3;
+  --ink: #292219;
+  --muted: #74695c;
+  --gold: #a87d2f;
+  --brown: #754a2b;
+  --brown-dark: #3b281d;
+  --porcelain: #fbf8ef;
+  --line: #d8cdbb;
   --serif: Georgia, "Times New Roman", serif;
 }
 * {
@@ -16,7 +19,11 @@ html {
 }
 body {
   margin: 0;
-  background: var(--paper);
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(rgba(92, 67, 43, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(92, 67, 43, 0.025) 1px, transparent 1px);
+  background-size: 72px 72px;
   color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
   font-size: 14px;
@@ -111,7 +118,7 @@ textarea:focus-visible {
   transition: background 0.15s;
 }
 .button:hover {
-  background: #414637;
+  background: var(--brown);
 }
 .button.secondary {
   background: transparent;
@@ -186,7 +193,14 @@ em {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at center, #eae3cd80, transparent 66%);
+  background:
+    radial-gradient(circle at 50% 48%, #ead9ac8c 0 22%, transparent 58%),
+    repeating-radial-gradient(
+      circle at 50% 55%,
+      transparent 0 43px,
+      #9b74461a 44px,
+      transparent 45px 68px
+    );
   padding-top: 4px;
 }
 .trophy-panel svg {
@@ -209,7 +223,7 @@ em {
 .trophy-caption {
   font-family: var(--serif);
   font-style: italic;
-  color: #8b7c53;
+  color: var(--brown);
   font-size: 17px;
   margin-top: 6px;
 }
@@ -224,7 +238,7 @@ em {
 }
 .ticker {
   border-block: 1px solid var(--line);
-  background: #eeece1;
+  background: #eee2ce;
 }
 .ticker > div {
   display: flex;
@@ -394,12 +408,12 @@ em {
   border-radius: 3px;
 }
 .vote:hover {
-  background: #e9e5d5;
+  background: #efe1cc;
 }
 .vote.voted {
-  background: #e7dfc4;
-  border-color: var(--gold);
-  color: #70591e;
+  background: #ead6b5;
+  border-color: var(--brown);
+  color: var(--brown-dark);
 }
 .vote-error {
   position: absolute;
@@ -961,5 +975,179 @@ label small {
   * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* Gilded filth: award-show polish with just enough bathroom humor. */
+.wordmark {
+  position: relative;
+}
+.wordmark i {
+  color: var(--brown);
+  display: inline-block;
+  font: 15px/1 var(--serif);
+  margin-left: 8px;
+  transform: rotate(-12deg) translateY(-2px);
+}
+.header::after {
+  background: var(--brown);
+  content: "";
+  height: 3px;
+  left: 0;
+  opacity: 0.8;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+.header {
+  position: relative;
+}
+.trophy-panel::before {
+  border: 1px solid #a87d2f42;
+  border-radius: 50%;
+  content: "";
+  height: 315px;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -48%);
+  width: 315px;
+}
+.trophy-panel svg {
+  position: relative;
+  z-index: 1;
+}
+.stink-lines {
+  opacity: 0.72;
+}
+.trophy-fly {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fly-wobble 4.5s ease-in-out infinite;
+}
+.hero-fly {
+  color: var(--brown-dark);
+  font-size: 7px;
+  position: absolute;
+  z-index: 2;
+}
+.hero-fly::before,
+.hero-fly::after {
+  background: #c4b27b99;
+  border: 1px solid #4e3b29;
+  border-radius: 60% 30%;
+  content: "";
+  height: 5px;
+  position: absolute;
+  top: -3px;
+  width: 8px;
+}
+.hero-fly::before {
+  right: 4px;
+  transform: rotate(22deg);
+}
+.hero-fly::after {
+  left: 4px;
+  transform: rotate(-22deg);
+}
+.hero-fly-one {
+  animation: fly-drift 6s ease-in-out infinite;
+  right: 14%;
+  top: 29%;
+}
+.hero-fly-two {
+  animation: fly-drift 7s ease-in-out -2s infinite reverse;
+  left: 15%;
+  top: 57%;
+}
+.vote {
+  border-color: #b9a994;
+  min-width: 72px;
+}
+.vote small {
+  font-size: 7px;
+  letter-spacing: 0.8px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.category-tag {
+  background: #eee0ca78;
+  border-color: #cbb998;
+  color: var(--brown);
+}
+.empty {
+  background: linear-gradient(145deg, #fffdf86e, #ecdfca78);
+}
+.empty-plunger {
+  color: var(--brown);
+  font: 46px/1 var(--serif);
+  margin-bottom: 15px;
+  transform: rotate(180deg);
+}
+.manifesto {
+  position: relative;
+}
+.manifesto::after {
+  color: #8f6536;
+  content: "〰 〰 〰";
+  font: 18px var(--serif);
+  letter-spacing: 8px;
+  opacity: 0.55;
+  position: absolute;
+  right: 0;
+  top: 44px;
+}
+@keyframes fly-wobble {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+  35% {
+    transform: translate(7px, -9px) rotate(9deg);
+  }
+  70% {
+    transform: translate(-5px, 4px) rotate(-7deg);
+  }
+}
+@keyframes fly-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+  35% {
+    transform: translate(18px, -15px) rotate(14deg);
+  }
+  70% {
+    transform: translate(-9px, -5px) rotate(-10deg);
+  }
+}
+@media (max-width: 700px) {
+  .wordmark i {
+    display: none;
+  }
+  .trophy-panel {
+    display: flex;
+    min-height: 390px;
+    margin-top: 8px;
+  }
+  .trophy-panel::before {
+    height: 270px;
+    width: 270px;
+  }
+  .trophy-panel svg {
+    width: 245px;
+  }
+  .orbit-text {
+    display: none;
+  }
+  .manifesto::after {
+    display: none;
+  }
+  .vote {
+    min-width: 58px;
+  }
+  .vote small {
+    font-size: 6px;
+    letter-spacing: 0.4px;
   }
 }

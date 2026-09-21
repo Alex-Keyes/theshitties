@@ -12,7 +12,7 @@ export default async function Results() {
         Past <em>dishonors.</em>
       </h1>
       <p className="lede">
-        The votes are temporary. The disappointment is forever.
+        The votes are temporary. The stain on history is forever.
       </p>
       {!archives.length ? (
         <div className="empty">

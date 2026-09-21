@@ -21,6 +21,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <header className="header shell">
           <Link className="wordmark" href="/">
             the shitties<span>®*</span>
+            <i aria-hidden="true">〰</i>
           </Link>
           <nav aria-label="Main navigation">
             <Link href="/#nominees">Nominees</Link>
@@ -36,8 +37,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div>
             <Link className="wordmark" href="/">
               the shitties<span>®*</span>
+              <i aria-hidden="true">〰</i>
             </Link>
-            <p>Because worse deserves recognition.</p>
+            <p>Because every turd deserves its pedestal.</p>
             <small>
               *Not a registered trademark. Just an inflated sense of importance.
             </small>
@@ -51,7 +53,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="footer-note">
             INDEPENDENT. COMMUNITY-POWERED.
             <br />
-            REGRETTABLY NECESSARY.
+            FLUSH WITH DISAPPOINTMENT.
           </div>
         </footer>
       </body>

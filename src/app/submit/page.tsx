@@ -8,11 +8,10 @@ export default async function Submit() {
     <div className="page narrow">
       <div className="eyebrow">THE {s.id} SHITTIES</div>
       <h1>
-        Give worse its <em>due.</em>
+        Drop a <em>nomination.</em>
       </h1>
       <p className="lede">
-        Know a product that took a turn for the worse? Make your case. Bring the
-        receipts.
+        Know a product circling the drain? Make your case. Bring the receipts.
       </p>
       <SubmissionForm closed={new Date(s.closesAt).getTime() <= Date.now()} />
     </div>

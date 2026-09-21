@@ -43,24 +43,32 @@ export default async function Home() {
           </div>
         </div>
         <div className="trophy-panel">
+          <span className="hero-fly hero-fly-one" aria-hidden="true">
+            ◆
+          </span>
+          <span className="hero-fly hero-fly-two" aria-hidden="true">
+            ◆
+          </span>
           <span className="edition">
             THE FIRST ANNUAL
             <br />
             <strong>SHITTY AWARDS</strong>
           </span>
           <Trophy />
-          <span className="trophy-caption">A new low. A new honor.</span>
-          <span className="orbit-text">EXCELLENCE IN DISAPPOINTMENT</span>
+          <span className="trophy-caption">
+            Polished. Plated. Perfectly shitty.
+          </span>
+          <span className="orbit-text">THE CREAM ALWAYS SINKS</span>
         </div>
       </section>
       <div className="ticker">
         <div className="shell">
-          <span>PROGRESS, BUT BACKWARDS.</span>
-          <span>✳</span>
+          <span>PROGRESS, DOWN THE DRAIN.</span>
+          <span>〰</span>
           <span>LESS VALUE. MORE SHAREHOLDER VALUE.</span>
-          <span>✳</span>
+          <span>〰</span>
           <span>IT USED TO BE BETTER.</span>
-          <span>✳</span>
+          <span>〰</span>
         </div>
       </div>
       <section id="nominees" className="shell ballot">
@@ -102,7 +110,7 @@ export default async function Home() {
           closed={closed}
         />
         <p className="ballot-footnote">
-          No account. No downvotes. Just a well-earned upvote.{" "}
+          No account. No downvotes. Give a shit about as many as you like.{" "}
           <Link href="/how-it-works">How voting works ↗</Link>
         </p>
       </section>
