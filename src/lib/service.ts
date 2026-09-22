@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { del, head } from "@vercel/blob";
 import { getDb, type Connection } from "./db";
-import { type Nominee, type Season } from "./constants";
+import { type Nominee, type NomineeImage, type Season } from "./constants";
 import { nominationInput, winners } from "./validation";
 export class AppError extends Error {
   constructor(
@@ -26,7 +27,7 @@ export async function rateLimit(
       429,
     );
 }
-const select = `SELECT n.id,n.season_id AS "seasonId",n.company,n.headline,n.description,n.category,n.sources,n.status,n.duplicate_of AS "duplicateOf",n.created_at AS "createdAt",(SELECT count(*)::int FROM votes v WHERE v.nominee_id=n.id) AS count`;
+const select = `SELECT n.id,n.season_id AS "seasonId",n.company,n.headline,n.description,n.category,n.sources,n.images,n.status,n.duplicate_of AS "duplicateOf",n.created_at AS "createdAt",(SELECT count(*)::int FROM votes v WHERE v.nominee_id=n.id) AS count`;
 export async function listNominees(voter: string | null = null, all = false) {
   const db = await getDb();
   return db.query<Nominee>(
@@ -58,13 +59,14 @@ export async function submitNominee(input: unknown) {
   const parsed = nominationInput.safeParse(input);
   if (!parsed.success) throw new AppError(parsed.error.issues[0].message);
   const n = parsed.data;
+  await validateUploadedImages(n.images);
   const db = await getDb();
   return db.transaction(async (tx) => {
     const s = await lockedSeason(tx);
     if (s.closed) throw new AppError("This year’s nominations have closed.");
     const id = randomUUID();
     await tx.query(
-      `INSERT INTO nominees(id,season_id,company,headline,description,category,sources) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb)`,
+      `INSERT INTO nominees(id,season_id,company,headline,description,category,sources,images) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb)`,
       [
         id,
         s.id,
@@ -73,10 +75,38 @@ export async function submitNominee(input: unknown) {
         n.description,
         n.category,
         JSON.stringify(n.sources),
+        JSON.stringify(n.images),
       ],
     );
     return id;
   });
+}
+
+const maxImageBytes = 5 * 1024 * 1024;
+const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+async function validateUploadedImages(images: NomineeImage[]) {
+  for (const image of images) {
+    if (image.kind !== "upload") continue;
+    if (!process.env.BLOB_READ_WRITE_TOKEN)
+      throw new AppError("Image uploads are not configured right now.", 503);
+    try {
+      const parsed = new URL(image.url);
+      if (
+        parsed.protocol !== "https:" ||
+        !parsed.hostname.endsWith(".public.blob.vercel-storage.com") ||
+        !parsed.pathname.startsWith("/nominations/")
+      )
+        throw new AppError("One of the uploaded images is not a recognized Blob image.");
+      const blob = await head(image.url, {
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      });
+      if (!imageTypes.has(blob.contentType) || blob.size > maxImageBytes)
+        throw new AppError("Each uploaded image must be a JPG, PNG, or WebP under 5 MB.");
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError("One of the uploaded images could not be verified.");
+    }
+  }
 }
 export async function castVote(id: string, voter: string, active: boolean) {
   const db = await getDb();
@@ -163,6 +193,29 @@ export async function adminAction(body: Record<string, unknown>) {
   const db = await getDb();
   if (body.action === "resolve") {
     await db.query("UPDATE reports SET resolved=1 WHERE id=$1", [body.id]);
+    return;
+  }
+  if (body.action === "removeImage") {
+    const db = await getDb();
+    const [row] = await db.query<{ images: NomineeImage[] }>(
+      "SELECT images FROM nominees WHERE id=$1",
+      [body.id],
+    );
+    if (!row) throw new AppError("Nomination not found.", 404);
+    const images = Array.isArray(row.images) ? row.images : [];
+    const removed = images.find((image) => image.url === body.url);
+    if (!removed) throw new AppError("Image not found.", 404);
+    await db.query("UPDATE nominees SET images=$1::jsonb WHERE id=$2", [
+      JSON.stringify(images.filter((image) => image.url !== body.url)),
+      body.id,
+    ]);
+    if (removed.kind === "upload") {
+      try {
+        await del(removed.url, { token: process.env.BLOB_READ_WRITE_TOKEN });
+      } catch (error) {
+        console.error("Could not delete removed Blob image", error);
+      }
+    }
     return;
   }
   await db.transaction(async (tx) => {

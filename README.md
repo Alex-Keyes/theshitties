@@ -17,6 +17,8 @@ Open http://localhost:3000. With no `DATABASE_URL`, the app initializes embedded
 
 Set a random `SESSION_SECRET` of at least 32 characters in `.env.local`. For admin access, run `npm run admin:password -- 'a-long-unique-password'` and put the returned hash in `ADMIN_PASSWORD_HASH`. `/admin` uses this password, never the hash. A development-only signing fallback lets the public site run before configuration; production fails without a proper secret and database.
 
+To enable direct image uploads, create a public Vercel Blob store and set its `BLOB_READ_WRITE_TOKEN` in `.env.local` (Vercel adds this variable automatically when the store is connected to the project). Image-URL submissions do not require Blob configuration.
+
 ## Neon development branch
 
 Create a dedicated development branch in your existing Neon project, then put its pooled Postgres connection string in `DATABASE_URL` in `.env.local`. Keep the branch separate from production. Restart the server after changing environment variables.
@@ -32,7 +34,7 @@ No Neon connection was supplied with this project, so the actual Neon connection
 
 ## Behavior
 
-- Public submissions publish immediately; text is rendered as text, and source links are never fetched by the server.
+- Public submissions publish immediately; text is rendered as text, source links are never fetched by the server, and nominations may include up to three described JPG, PNG, or WebP images. Uploaded images use Vercel Blob; pasted image URLs remain externally hosted and are loaded directly by visitors.
 - One upvote per signed browser identifier per nomination; repeat requests are idempotent. Anonymous voting is deliberately not one-person-one-vote.
 - Server-enforced rate limits: 5 submissions/hour, 120 vote requests/minute, 10 reports/hour, 10 admin login attempts/15 minutes, per hashed connection address.
 - Vercel's trusted request IP headers supply the address. If hosting behind another proxy, configure trusted headers before launch.
@@ -40,7 +42,7 @@ No Neon connection was supplied with this project, so the actual Neon connection
 - All ballot writes and finalization lock the season row. Vote totals and nominee text are snapshotted on the first homepage, results, admin visit, or moderation action after closing. The deadline is enforced even if no page is visited at the exact closing time.
 - Each category's highest count wins; the overall highest count wins The Golden Shitty. Ties, including zero-vote ties, share awards. Empty categories have no winner.
 - Reports never automatically hide entries. Admins can hide/restore, mark duplicates without transferring votes, and resolve reports. Saved annual results stay immutable when nominations are moderated later.
-- No public login, comments, uploads, downvotes, analytics, or submitter editing.
+- No public login, comments, downvotes, analytics, or submitter editing. Admins can remove individual nomination images.
 - To open another season, add a new row to `seasons` through a reviewed migration after finalizing the previous season. Historical snapshots remain intact. V1 admin settings edit the current deadline; they do not create seasons.
 
 ## Checks

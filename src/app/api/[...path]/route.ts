@@ -93,6 +93,11 @@ export async function POST(
           status: z.enum(["visible", "hidden", "duplicate"]),
           duplicateOf: z.uuid().optional(),
         }),
+        z.object({
+          action: z.literal("removeImage"),
+          id: z.uuid(),
+          url: z.url(),
+        }),
       ]);
       const parsed = adminSchema.safeParse(body);
       if (!parsed.success) throw new AppError("Invalid admin request.");

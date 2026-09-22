@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { listNominees, season } from "@/lib/service";
 import { voterId } from "@/lib/auth";
 import { category } from "@/lib/constants";
-import { Vote, Report } from "@/components/ui";
+import { ImageGallery, Vote, Report } from "@/components/ui";
 export const dynamic = "force-dynamic";
 export async function generateMetadata({
   params,
@@ -61,6 +61,7 @@ export default async function Detail({
           }
         />
       )}
+      <ImageGallery images={n.images || []} title={n.headline} />
       <div className="detail-body">{n.description}</div>
       <section className="sources">
         <h2>The receipts</h2>

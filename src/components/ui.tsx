@@ -1,9 +1,17 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRef } from "react";
 import Link from "next/link";
+import NextImage from "next/image";
 import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 import { ArrowUp, ArrowUpRight, Check, Flag, Loader2 } from "lucide-react";
-import { categories, category, type Nominee } from "@/lib/constants";
+import {
+  categories,
+  category,
+  type Nominee,
+  type NomineeImage,
+} from "@/lib/constants";
 export async function api(path: string, body: unknown) {
   const res = await fetch("/api/" + path, {
     method: "POST",
@@ -80,6 +88,143 @@ export function Vote({
     </div>
   );
 }
+
+function ImageElement({
+  image,
+  className,
+  onError,
+}: {
+  image: NomineeImage;
+  className?: string;
+  onError?: () => void;
+}) {
+  let ownedBlob = false;
+  try {
+    ownedBlob =
+      image.kind === "upload" &&
+      new URL(image.url).hostname.endsWith(".public.blob.vercel-storage.com") &&
+      new URL(image.url).pathname.startsWith("/nominations/");
+  } catch {
+    ownedBlob = false;
+  }
+  if (ownedBlob)
+    return (
+      <NextImage
+        src={image.url}
+        alt={image.alt}
+        className={className}
+        fill
+        sizes="(max-width: 700px) 68px, 112px"
+      />
+    );
+  return (
+    <img
+      src={image.url}
+      alt={image.alt}
+      className={className}
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={onError}
+    />
+  );
+}
+
+export function ImageGallery({
+  images,
+  title,
+}: {
+  images: NomineeImage[];
+  title: string;
+}) {
+  const [selected, setSelected] = useState<number | null>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (selected === null) return;
+    const previous = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelected(null);
+      if (event.key === "ArrowLeft")
+        setSelected((current) =>
+          current === null ? null : (current + images.length - 1) % images.length,
+        );
+      if (event.key === "ArrowRight")
+        setSelected((current) =>
+          current === null ? null : (current + 1) % images.length,
+        );
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      previous?.focus();
+    };
+  }, [selected, images.length]);
+  if (!images.length) return null;
+  return (
+    <>
+      <div className="image-gallery" aria-label={`${title} images`}>
+        {images.map((image, index) => (
+          <button
+            className="image-thumb"
+            key={image.url}
+            type="button"
+            aria-label={`View image ${index + 1}: ${image.alt}`}
+            onClick={() => setSelected(index)}
+          >
+            <ImageElement image={image} />
+          </button>
+        ))}
+      </div>
+      {selected !== null && (
+        <div
+          className="image-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${title} image viewer`}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSelected(null);
+          }}
+        >
+          <button
+            className="lightbox-close"
+            type="button"
+            ref={closeRef}
+            onClick={() => setSelected(null)}
+          >
+            Close
+          </button>
+          <button
+            className="lightbox-nav lightbox-prev"
+            type="button"
+            aria-label="Previous image"
+            onClick={() =>
+              setSelected((selected + images.length - 1) % images.length)
+            }
+          >
+            ←
+          </button>
+          <figure>
+            <img
+              src={images[selected].url}
+              alt={images[selected].alt}
+              referrerPolicy="no-referrer"
+            />
+            <figcaption>{images[selected].alt}</figcaption>
+          </figure>
+          <button
+            className="lightbox-nav lightbox-next"
+            type="button"
+            aria-label="Next image"
+            onClick={() => setSelected((selected + 1) % images.length)}
+          >
+            →
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
 export function NomineeList({
   items,
   closed,
@@ -138,6 +283,15 @@ export function NomineeList({
           filtered.map((n, i) => (
             <article className="nominee" key={n.id}>
               <span className="rank">{String(i + 1).padStart(2, "0")}</span>
+              {n.images?.[0] && (
+                <Link
+                  className="nominee-cover"
+                  href={`/nominees/${n.id}`}
+                  aria-label={`View images for ${n.company}`}
+                >
+                  <ImageElement image={n.images[0]} />
+                </Link>
+              )}
               <div className="nominee-copy">
                 <div className="nominee-overline">
                   <span>{n.company}</span>
@@ -173,13 +327,26 @@ export function NomineeList({
     </>
   );
 }
+type DraftImage = {
+  id: number;
+  kind: "upload" | "external";
+  file?: File;
+  url: string;
+  alt: string;
+  preview?: string;
+  uploadedUrl?: string;
+};
+let nextImageId = 1;
+
 export function SubmissionForm({ closed }: { closed: boolean }) {
   const router = useRouter();
   const [company, setCompany] = useState("");
   const [similar, setSimilar] = useState<
     { id: string; company: string; headline: string }[]
   >([]);
+  const [images, setImages] = useState<DraftImage[]>([]);
   const [busy, setBusy] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
@@ -203,6 +370,22 @@ export function SubmissionForm({ closed }: { closed: boolean }) {
         <Link href="/results">See the results →</Link>
       </div>
     );
+  function addImage(kind: DraftImage["kind"]) {
+    if (images.length >= 3) {
+      setError("You can add up to three images.");
+      return;
+    }
+    setImages((current) => [
+      ...current,
+      { id: nextImageId++, kind, url: "", alt: "" },
+    ]);
+    setError("");
+  }
+  function updateImage(id: number, update: Partial<DraftImage>) {
+    setImages((current) =>
+      current.map((image) => (image.id === id ? { ...image, ...update } : image)),
+    );
+  }
   return (
     <form
       className="form"
@@ -210,8 +393,43 @@ export function SubmissionForm({ closed }: { closed: boolean }) {
         e.preventDefault();
         setBusy(true);
         setError("");
+        setUploadStatus("");
         const data = new FormData(e.currentTarget);
         try {
+          const prepared: NomineeImage[] = [];
+          for (const image of images) {
+            const alt = image.alt.trim();
+            if (alt.length < 5 || alt.length > 300)
+              throw new Error("Each image needs a description between 5 and 300 characters.");
+            if (image.kind === "external") {
+              const url = image.url.trim();
+              if (!/^https:\/\//i.test(url))
+                throw new Error("Image URLs must use HTTPS.");
+              prepared.push({ kind: image.kind, url, alt });
+              continue;
+            }
+            if (!image.file && !image.uploadedUrl)
+              throw new Error("Choose a file for each upload image.");
+            let url = image.uploadedUrl;
+            if (!url && image.file) {
+              setUploadStatus(`Uploading image ${prepared.length + 1} of ${images.length}…`);
+              const extension = image.file.type === "image/jpeg" ? "jpg" : image.file.type.split("/")[1];
+              const blob = await upload(
+                `nominations/${crypto.randomUUID()}.${extension}`,
+                image.file,
+                {
+                  access: "public",
+                  contentType: image.file.type,
+                  handleUploadUrl: "/api/uploads",
+                  onUploadProgress: ({ percentage }) =>
+                    setUploadStatus(`Uploading image ${prepared.length + 1} of ${images.length} (${Math.round(percentage)}%)…`),
+                },
+              );
+              url = blob.url;
+              updateImage(image.id, { uploadedUrl: url });
+            }
+            prepared.push({ kind: "upload", url: url!, alt });
+          }
           const result = await api("nominees", {
             company,
             headline: data.get("headline"),
@@ -221,6 +439,7 @@ export function SubmissionForm({ closed }: { closed: boolean }) {
               .split("\n")
               .map((s) => s.trim())
               .filter(Boolean),
+            images: prepared,
             website: data.get("website"),
           });
           router.push("/nominees/" + result.id);
@@ -228,6 +447,7 @@ export function SubmissionForm({ closed }: { closed: boolean }) {
         } catch (e) {
           setError((e as Error).message);
           setBusy(false);
+          setUploadStatus("");
         }
       }}
     >
@@ -297,6 +517,78 @@ export function SubmissionForm({ closed }: { closed: boolean }) {
           documented changes.
         </small>
       </label>
+      <fieldset className="image-form">
+        <legend>Images <span>(optional, up to 3)</span></legend>
+        <p className="muted">Add screenshots or other evidence. The first image becomes the ballot-card cover.</p>
+        {images.map((image, index) => (
+          <div className="image-entry" key={image.id}>
+            <div className="image-entry-head">
+              <strong>Image {index + 1}{index === 0 ? " · cover" : ""}</strong>
+              <button type="button" className="text-button" onClick={() => setImages((current) => current.filter((item) => item.id !== image.id))}>Remove</button>
+            </div>
+            <label>
+              Type
+              <select
+                value={image.kind}
+                onChange={(event) => updateImage(image.id, { kind: event.target.value as DraftImage["kind"], file: undefined, url: "", preview: undefined, uploadedUrl: undefined })}
+              >
+                <option value="upload">Upload a file</option>
+                <option value="external">Use an HTTPS URL</option>
+              </select>
+            </label>
+            {image.kind === "upload" ? (
+              <label>
+                Image file
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  required={!image.uploadedUrl}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+                      setError("Images must be JPG, PNG, or WebP files under 5 MB.");
+                      event.currentTarget.value = "";
+                      return;
+                    }
+                    updateImage(image.id, { file, preview: URL.createObjectURL(file), uploadedUrl: undefined });
+                    setError("");
+                  }}
+                />
+              </label>
+            ) : (
+              <label>
+                Image URL
+                <input
+                  type="url"
+                  required
+                  value={image.url}
+                  onChange={(event) => updateImage(image.id, { url: event.target.value })}
+                  placeholder="https://example.com/screenshot.webp"
+                />
+              </label>
+            )}
+            <label>
+              Image description
+              <input
+                required
+                minLength={5}
+                maxLength={300}
+                value={image.alt}
+                onChange={(event) => updateImage(image.id, { alt: event.target.value })}
+                placeholder="What this screenshot shows"
+              />
+            </label>
+            {(image.preview || image.url) && (
+              <img className="image-preview" src={image.preview || image.url} alt="" referrerPolicy="no-referrer" />
+            )}
+          </div>
+        ))}
+        <div className="image-actions">
+          <button type="button" className="button secondary" disabled={images.length >= 3} onClick={() => addImage("upload")}>+ Add upload</button>
+          <button type="button" className="button secondary" disabled={images.length >= 3} onClick={() => addImage("external")}>+ Add image URL</button>
+        </div>
+      </fieldset>
       <div className="honeypot" aria-hidden="true">
         <label>
           Leave this empty
@@ -307,18 +599,14 @@ export function SubmissionForm({ closed }: { closed: boolean }) {
         Nominations publish immediately. Keep it factual, focus on products and
         companies, and follow our <Link href="/rules">submission rules</Link>.
       </p>
+      {uploadStatus && <p className="muted" role="status">{uploadStatus}</p>}
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
       <button disabled={busy} className="button">
-        {busy ? (
-          <Loader2 className="spin" size={18} />
-        ) : (
-          <ArrowUpRight size={18} />
-        )}{" "}
-        {busy ? "Submitting…" : "Submit nomination"}
+        {busy ? <Loader2 className="spin" size={18} /> : <ArrowUpRight size={18} />} {busy ? "Submitting…" : "Submit nomination"}
       </button>
     </form>
   );

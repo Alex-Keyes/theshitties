@@ -31,6 +31,11 @@ export const categories = [
   },
 ] as const;
 export const category = (id: string) => categories.find((c) => c.id === id)!;
+export type NomineeImage = {
+  kind: "upload" | "external";
+  url: string;
+  alt: string;
+};
 export type Nominee = {
   id: string;
   seasonId: number;
@@ -39,6 +44,7 @@ export type Nominee = {
   description: string;
   category: string;
   sources: string[];
+  images: NomineeImage[];
   status: string;
   duplicateOf: string | null;
   createdAt: string;

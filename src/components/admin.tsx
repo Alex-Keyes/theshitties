@@ -156,6 +156,22 @@ export function AdminPanel({
             <p>
               {n.status} · {n.count} votes
             </p>
+            {n.images?.length > 0 && (
+              <div className="admin-images" aria-label="Nomination images">
+                {n.images.map((image) => (
+                  <div className="admin-image" key={image.url}>
+                    <img src={image.url} alt={image.alt} referrerPolicy="no-referrer" />
+                    <button
+                      className="text-button"
+                      disabled={busy}
+                      onClick={() => act({ action: "removeImage", id: n.id, url: image.url })}
+                    >
+                      Remove image
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="admin-controls">
               <button
                 className="button secondary"

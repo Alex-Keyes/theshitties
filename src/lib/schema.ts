@@ -8,6 +8,7 @@ import {
   jsonb,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 export const seasons = pgTable("seasons", {
   id: integer().primaryKey(),
   closesAt: timestamp("closes_at", { withTimezone: true }).notNull(),
@@ -25,6 +26,7 @@ export const nominees = pgTable(
     description: text().notNull(),
     category: text().notNull(),
     sources: jsonb().$type<string[]>().notNull(),
+    images: jsonb().$type<{ kind: "upload" | "external"; url: string; alt: string }[]>().notNull().default(sql`'[]'::jsonb`),
     status: text().notNull().default("visible"),
     duplicateOf: uuid("duplicate_of"),
     createdAt: timestamp("created_at", { withTimezone: true })

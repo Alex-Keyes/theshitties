@@ -25,6 +25,13 @@ const input = {
   description:
     "This product removed the useful features customers had already paid for.",
   sources: ["https://example.com/evidence"],
+  images: [
+    {
+      kind: "external" as const,
+      url: "https://example.com/evidence.png",
+      alt: "Screenshot of the removed feature",
+    },
+  ],
   website: "",
 };
 before(async () => {
@@ -43,6 +50,20 @@ test("validation accepts plain text and rejects unsafe sources and honeypot", ()
   );
   assert.equal(
     nominationInput.safeParse({ ...input, sources: [] }).success,
+    false,
+  );
+  assert.equal(
+    nominationInput.safeParse({
+      ...input,
+      images: Array.from({ length: 4 }, () => input.images[0]),
+    }).success,
+    false,
+  );
+  assert.equal(
+    nominationInput.safeParse({
+      ...input,
+      images: [{ ...input.images[0], url: "http://example.com/image.png" }],
+    }).success,
     false,
   );
 });
@@ -71,6 +92,10 @@ test("database-backed submission, votes, moderation, reports, limits and finaliz
   const other = await submitNominee({ ...input, company: "Second Company" });
   const voter = randomUUID();
   assert.equal((await listNominees()).length, 2);
+  assert.equal(
+    (await listNominees()).find((n) => n.id === id)?.images[0].alt,
+    "Screenshot of the removed feature",
+  );
   await Promise.all(
     Array.from({ length: 12 }, () => castVote(id, voter, true)),
   );
@@ -101,6 +126,12 @@ test("database-backed submission, votes, moderation, reports, limits and finaliz
   );
   await assert.rejects(() => castVote(id, voter, true), /not open/);
   await adminAction({ action: "moderate", id, status: "visible" });
+  await adminAction({
+    action: "removeImage",
+    id,
+    url: "https://example.com/evidence.png",
+  });
+  assert.equal((await listNominees()).find((n) => n.id === id)?.images.length, 0);
   await assert.rejects(
     () =>
       adminAction({
