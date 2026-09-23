@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { categories } from "./constants";
+import { categories, sectors, sourceTypes } from "./constants";
 const source = z
   .string()
   .trim()
@@ -17,12 +17,24 @@ const image = z.object({
   url: imageUrl,
   alt: z.string().trim().min(5).max(300),
 });
+const nominationSource = z.object({
+  url: source,
+  title: z.string().trim().min(4).max(200),
+  publisher: z.string().trim().min(2).max(100),
+  publishedAt: z.iso.date(),
+  type: z.enum(sourceTypes.map((item) => item.id)),
+});
 export const nominationInput = z.object({
   company: z.string().trim().min(2).max(100),
   headline: z.string().trim().min(8).max(140),
-  description: z.string().trim().min(30).max(4000),
+  description: z.string().trim().min(30).max(1000),
+  before: z.string().trim().min(20).max(1500),
+  after: z.string().trim().min(20).max(1500),
+  impact: z.string().trim().min(20).max(1500),
+  changedAt: z.iso.date(),
   category: z.enum(categories.map((c) => c.id)),
-  sources: z.array(source).min(1).max(3),
+  sector: z.enum(sectors.map((item) => item.id)),
+  sources: z.array(nominationSource).min(1).max(3),
   images: z.array(image).max(3).default([]),
   website: z.string().max(0).optional(),
 });

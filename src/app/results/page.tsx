@@ -35,10 +35,10 @@ export default async function Results() {
                 name: "The Golden Shitty",
                 items: a.snapshot.overall,
               },
-              ...categories.map((c) => ({
-                ...c,
-                items: a.snapshot.categories[c.id],
-              })),
+                ...categories.map((c) => ({
+                  ...c,
+                  items: a.snapshot.categories[c.id] ?? [],
+                })),
             ].map((c) => (
               <div key={c.id}>
                 <h3>{c.name}</h3>

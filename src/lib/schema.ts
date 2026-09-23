@@ -3,6 +3,7 @@ import {
   text,
   integer,
   timestamp,
+  date,
   uuid,
   primaryKey,
   jsonb,
@@ -24,10 +25,27 @@ export const nominees = pgTable(
     company: text().notNull(),
     headline: text().notNull(),
     description: text().notNull(),
+    before: text("before_state"),
+    after: text("after_state"),
+    impact: text(),
+    changedAt: date("changed_at"),
     category: text().notNull(),
-    sources: jsonb().$type<string[]>().notNull(),
+    sector: text(),
+    sources: jsonb()
+      .$type<
+        {
+          url: string;
+          title: string;
+          publisher: string;
+          publishedAt: string;
+          type: "primary" | "regulator" | "reporting" | "community";
+        }[]
+      >()
+      .notNull(),
     images: jsonb().$type<{ kind: "upload" | "external"; url: string; alt: string }[]>().notNull().default(sql`'[]'::jsonb`),
     status: text().notNull().default("visible"),
+    outcome: text().notNull().default("ongoing"),
+    verified: integer().notNull().default(0),
     duplicateOf: uuid("duplicate_of"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

@@ -13,7 +13,10 @@ export default async function Submit() {
       <p className="lede">
         Know a product circling the drain? Make your case. Bring the receipts.
       </p>
-      <SubmissionForm closed={new Date(s.closesAt).getTime() <= Date.now()} />
+      <SubmissionForm
+        closed={new Date(s.closesAt).getTime() <= Date.now()}
+        seasonId={s.id}
+      />
     </div>
   );
 }

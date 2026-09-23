@@ -12,14 +12,15 @@ export default function How() {
       </h1>
       <p className="lede">
         The Shitties is an independent, annual community award for
-        enshittification: products and services that become worse for the people
-        using them.
+        enshittification: products, services, and public systems that become
+        worse for the people using them.
       </p>
       <h2>01. Make your case.</h2>
       <p>
-        Nominate a specific change to a company or product. Explain the before
-        and after, pick a category, and include supporting links. Submissions
-        appear immediately. No account needed.
+        Nominate a specific change that began or materially expanded during the
+        award year. Explain the before, after, and damage; choose a category and
+        sector; and add dated receipts. Submissions appear immediately. No
+        account needed.
       </p>
       <h2>02. Vote for the worst.</h2>
       <p>
@@ -35,7 +36,7 @@ export default function How() {
         receives The Golden Shitty. Ties mean joint winners. Results are saved
         when the season closes.
       </p>
-      <h2>Five ways to disappoint.</h2>
+      <h2>{categories.length} ways to disappoint.</h2>
       <div className="category-descriptions">
         {categories.map((c) => (
           <div key={c.id}>
@@ -48,6 +49,14 @@ export default function How() {
       <p>
         No category nominees means no award in that category. If nominees tie at
         zero votes, they remain joint leaders under the same rules.
+      </p>
+      <h2>The record keeps going.</h2>
+      <p>
+        Each season has its own ballot and eligibility window. Company pages
+        connect nominations across years, while outcome labels show whether the
+        offending change is still active, partially fixed, reversed, or
+        settled. Reversals and partial fixes appear in the Backlash Worked
+        gallery.
       </p>
       <Link className="button" href="/submit">
         Submit a nomination ↗

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { outcomes } from "@/lib/constants";
 import {
   adminAction,
   AppError,
@@ -30,10 +31,10 @@ export async function POST(
       new URL(origin).host !== req.headers.get("host")
     )
       throw new AppError("Invalid request origin.", 403);
-    if (Number(req.headers.get("content-length") || 0) > 20000)
+    if (Number(req.headers.get("content-length") || 0) > 30000)
       throw new AppError("Submission too large.", 413);
     const raw = await req.text();
-    if (raw.length > 20000) throw new AppError("Submission too large.", 413);
+    if (raw.length > 30000) throw new AppError("Submission too large.", 413);
     let body;
     try {
       body = JSON.parse(raw);
@@ -97,6 +98,12 @@ export async function POST(
           action: z.literal("removeImage"),
           id: z.uuid(),
           url: z.url(),
+        }),
+        z.object({
+          action: z.literal("review"),
+          id: z.uuid(),
+          verified: z.boolean(),
+          outcome: z.enum(outcomes.map((item) => item.id)),
         }),
       ]);
       const parsed = adminSchema.safeParse(body);

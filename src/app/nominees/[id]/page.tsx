@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listNominees, season } from "@/lib/service";
 import { voterId } from "@/lib/auth";
-import { category } from "@/lib/constants";
-import { ImageGallery, Vote, Report } from "@/components/ui";
+import { category, sector, sourceType } from "@/lib/constants";
+import { ImageGallery, NomineeBadges, Vote, Report } from "@/components/ui";
 export const dynamic = "force-dynamic";
 export async function generateMetadata({
   params,
@@ -35,19 +35,27 @@ export default async function Detail({
         ← Back to the nominees
       </Link>
       <div className="eyebrow">
-        {n.seasonId} COMMUNITY NOMINATION · {category(n.category)?.name}
+        {n.seasonId} COMMUNITY NOMINATION · {category(n.category)?.name} ·{" "}
+        {sector(n.sector).name}
       </div>
       <h1>{n.headline}</h1>
       <div className="detail-company">
-        <strong>{n.company}</strong>
+        <strong>
+          <Link href={`/companies/${encodeURIComponent(n.company)}`}>
+            {n.company} ↗
+          </Link>
+        </strong>
         <span>
-          Submitted{" "}
-          {new Date(n.createdAt).toLocaleDateString("en-US", {
-            timeZone: "America/New_York",
-            dateStyle: "medium",
-          })}
+          Change dated{" "}
+          {n.changedAt
+            ? new Date(`${n.changedAt}T12:00:00Z`).toLocaleDateString("en-US", {
+                timeZone: "UTC",
+                dateStyle: "medium",
+              })
+            : "not recorded"}
         </span>
       </div>
+      <NomineeBadges nominee={n} />
       {n.status === "duplicate" ? (
         <aside className="notice">
           This nomination duplicates an existing entry.{" "}
@@ -62,23 +70,54 @@ export default async function Detail({
         />
       )}
       <ImageGallery images={n.images || []} title={n.headline} />
-      <div className="detail-body">{n.description}</div>
+      <p className="detail-body">{n.description}</p>
+      {n.before && n.after && n.impact ? (
+        <section className="case-file" aria-label="The case">
+          <div>
+            <span>01 · Before</span>
+            <p>{n.before}</p>
+          </div>
+          <div>
+            <span>02 · After</span>
+            <p>{n.after}</p>
+          </div>
+          <div>
+            <span>03 · Damage</span>
+            <p>{n.impact}</p>
+          </div>
+        </section>
+      ) : null}
       <section className="sources">
         <h2>The receipts</h2>
-        {n.sources.map((url, i) => (
+        {n.sources.map((source, i) => (
           <a
-            key={url + i}
-            href={url}
+            className="source-card"
+            key={source.url + i}
+            href={source.url}
             target="_blank"
             rel="nofollow noopener noreferrer"
           >
-            {String(i + 1).padStart(2, "0")} · {new URL(url).hostname}{" "}
+            <span className="source-number">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span>
+              <strong>{source.title}</strong>
+              <small>
+                {source.publisher} · {sourceType(source.type).name}
+                {source.publishedAt
+                  ? ` · ${new Date(`${source.publishedAt}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", dateStyle: "medium" })}`
+                  : ""}
+              </small>
+            </span>
             <span>↗</span>
           </a>
         ))}
       </section>
       <p className="muted">
         A community-submitted nomination, not an official award announcement.
+        {n.verified
+          ? " An editor checked that the cited sources support the core change and date; this is not an endorsement of every opinion in the nomination."
+          : " Its receipts have not yet received an editorial verification badge."}{" "}
         Votes reflect informal community opinion.
       </p>
       {n.status === "visible" && <Report id={n.id} />}

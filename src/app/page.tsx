@@ -30,7 +30,8 @@ export default async function Home() {
           <p>
             More ads. Fewer features. Higher prices.
             <br />
-            Nominate the products that got worse.
+            Nominate the products, services, and public systems that got worse
+            this year.
           </p>
           <div className="hero-actions">
             <Link className="button" href={closed ? "/results" : "/submit"}>
@@ -130,6 +131,10 @@ export default async function Home() {
           <p>
             The Shitties gives those decisions the recognition they deserve. You
             bring the receipts. The internet picks the winners.
+          </p>
+          <p>
+            Each year starts a fresh ballot. The archives remember who keeps
+            coming back.
           </p>
           <Link className="text-link" href="/how-it-works">
             A little more about this whole thing <ArrowUpRight size={16} />

@@ -22,9 +22,22 @@ const input = {
   company: "Test Company",
   headline: "The update that removed everything",
   category: "features",
+  sector: "technology",
+  changedAt: "2026-06-15",
   description:
     "This product removed the useful features customers had already paid for.",
-  sources: ["https://example.com/evidence"],
+  before: "Customers could use the core features included with their purchase.",
+  after: "The company removed those features in its June 2026 product update.",
+  impact: "Existing customers lost functionality that was part of the product they bought.",
+  sources: [
+    {
+      url: "https://example.com/evidence",
+      title: "June product update notes",
+      publisher: "Example News",
+      publishedAt: "2026-06-15",
+      type: "reporting" as const,
+    },
+  ],
   images: [
     {
       kind: "external" as const,
@@ -40,8 +53,10 @@ before(async () => {
 test("validation accepts plain text and rejects unsafe sources and honeypot", () => {
   assert.equal(nominationInput.safeParse(input).success, true);
   assert.equal(
-    nominationInput.safeParse({ ...input, sources: ["javascript:alert(1)"] })
-      .success,
+    nominationInput.safeParse({
+      ...input,
+      sources: [{ ...input.sources[0], url: "javascript:alert(1)" }],
+    }).success,
     false,
   );
   assert.equal(
@@ -90,12 +105,29 @@ test("database-backed submission, votes, moderation, reports, limits and finaliz
   const db = await getDb();
   const id = await submitNominee(input);
   const other = await submitNominee({ ...input, company: "Second Company" });
+  await assert.rejects(
+    () => submitNominee({ ...input, changedAt: "2025-12-31" }),
+    /2026 award year/,
+  );
   const voter = randomUUID();
   assert.equal((await listNominees()).length, 2);
   assert.equal(
     (await listNominees()).find((n) => n.id === id)?.images[0].alt,
     "Screenshot of the removed feature",
   );
+  assert.equal(
+    (await listNominees()).find((n) => n.id === id)?.sources[0].title,
+    "June product update notes",
+  );
+  await adminAction({
+    action: "review",
+    id,
+    verified: true,
+    outcome: "partial",
+  });
+  const reviewed = (await listNominees()).find((n) => n.id === id);
+  assert.equal(reviewed?.verified, true);
+  assert.equal(reviewed?.outcome, "partial");
   await Promise.all(
     Array.from({ length: 12 }, () => castVote(id, voter, true)),
   );

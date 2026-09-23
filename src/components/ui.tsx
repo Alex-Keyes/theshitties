@@ -9,8 +9,13 @@ import { ArrowUp, ArrowUpRight, Check, Flag, Loader2 } from "lucide-react";
 import {
   categories,
   category,
+  outcome,
+  sectors,
+  sector,
+  sourceTypes,
   type Nominee,
   type NomineeImage,
+  type NomineeSource,
 } from "@/lib/constants";
 export async function api(path: string, body: unknown) {
   const res = await fetch("/api/" + path, {
@@ -21,6 +26,21 @@ export async function api(path: string, body: unknown) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Please try again.");
   return data;
+}
+
+export function NomineeBadges({ nominee }: { nominee: Nominee }) {
+  return (
+    <span className="nominee-badges">
+      {nominee.verified && (
+        <span className="verified-badge">
+          <Check size={11} /> Receipts verified
+        </span>
+      )}
+      <span className={`outcome-badge outcome-${nominee.outcome}`}>
+        {outcome(nominee.outcome).name}
+      </span>
+    </span>
+  );
 }
 let voterSession: Promise<unknown> | undefined;
 async function ensureVoterSession() {
@@ -233,9 +253,14 @@ export function NomineeList({
   closed: boolean;
 }) {
   const [filter, setFilter] = useState("all");
+  const [sectorFilter, setSectorFilter] = useState("all");
   const [sort, setSort] = useState("top");
   const filtered = items
-    .filter((n) => filter === "all" || n.category === filter)
+    .filter(
+      (n) =>
+        (filter === "all" || n.category === filter) &&
+        (sectorFilter === "all" || n.sector === sectorFilter),
+    )
     .sort((a, b) =>
       sort === "new"
         ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -244,22 +269,47 @@ export function NomineeList({
     );
   return (
     <>
-      <div className="filters" aria-label="Filter nominees">
-        <button
-          aria-pressed={filter === "all"}
-          onClick={() => setFilter("all")}
-        >
-          All nominees <span>{items.length}</span>
-        </button>
-        {categories.map((c) => (
-          <button
-            key={c.id}
-            aria-pressed={filter === c.id}
-            onClick={() => setFilter(c.id)}
-          >
-            {c.name}
-          </button>
-        ))}
+      <div className="filter-stack">
+        <div className="filter-row">
+          <span>By award</span>
+          <div className="filters" aria-label="Filter nominees by award">
+            <button
+              aria-pressed={filter === "all"}
+              onClick={() => setFilter("all")}
+            >
+              All nominees <span>{items.length}</span>
+            </button>
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                aria-pressed={filter === c.id}
+                onClick={() => setFilter(c.id)}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="filter-row">
+          <span>By sector</span>
+          <div className="filters" aria-label="Filter nominees by sector">
+            <button
+              aria-pressed={sectorFilter === "all"}
+              onClick={() => setSectorFilter("all")}
+            >
+              All sectors
+            </button>
+            {sectors.map((item) => (
+              <button
+                key={item.id}
+                aria-pressed={sectorFilter === item.id}
+                onClick={() => setSectorFilter(item.id)}
+              >
+                {item.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="list-meta">
         <span>
@@ -298,12 +348,14 @@ export function NomineeList({
                   <span className="category-tag">
                     {category(n.category)?.name}
                   </span>
+                  <span className="sector-tag">{sector(n.sector).name}</span>
                 </div>
                 <Link className="nominee-title" href={"/nominees/" + n.id}>
                   {n.headline}
                   <ArrowUpRight size={19} />
                 </Link>
                 <p>{n.description}</p>
+                <NomineeBadges nominee={n} />
               </div>
               <Vote nominee={n} closed={closed} />
             </article>
@@ -336,15 +388,32 @@ type DraftImage = {
   preview?: string;
   uploadedUrl?: string;
 };
+type DraftSource = NomineeSource & { id: string };
 let nextImageId = 1;
 
-export function SubmissionForm({ closed }: { closed: boolean }) {
+export function SubmissionForm({
+  closed,
+  seasonId,
+}: {
+  closed: boolean;
+  seasonId: number;
+}) {
   const router = useRouter();
   const [company, setCompany] = useState("");
   const [similar, setSimilar] = useState<
     { id: string; company: string; headline: string }[]
   >([]);
   const [images, setImages] = useState<DraftImage[]>([]);
+  const [sources, setSources] = useState<DraftSource[]>([
+    {
+      id: "initial",
+      url: "",
+      title: "",
+      publisher: "",
+      publishedAt: "",
+      type: "reporting",
+    },
+  ]);
   const [busy, setBusy] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
   const [error, setError] = useState("");
@@ -386,6 +455,16 @@ export function SubmissionForm({ closed }: { closed: boolean }) {
       current.map((image) => (image.id === id ? { ...image, ...update } : image)),
     );
   }
+  function updateSource(id: string, update: Partial<DraftSource>) {
+    setSources((current) =>
+      current.map((source) =>
+        source.id === id ? { ...source, ...update } : source,
+      ),
+    );
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  const maxChangeDate =
+    today < `${seasonId}-12-31` ? today : `${seasonId}-12-31`;
   return (
     <form
       className="form"
@@ -434,11 +513,13 @@ export function SubmissionForm({ closed }: { closed: boolean }) {
             company,
             headline: data.get("headline"),
             description: data.get("description"),
+            before: data.get("before"),
+            after: data.get("after"),
+            impact: data.get("impact"),
+            changedAt: data.get("changedAt"),
             category: data.get("category"),
-            sources: String(data.get("sources"))
-              .split("\n")
-              .map((s) => s.trim())
-              .filter(Boolean),
+            sector: data.get("sector"),
+            sources: sources.map(({ id: _id, ...source }) => source),
             images: prepared,
             website: data.get("website"),
           });
@@ -494,29 +575,192 @@ export function SubmissionForm({ closed }: { closed: boolean }) {
         </select>
       </label>
       <label>
-        What got worse?
+        Sector
+        <select name="sector" required>
+          <option value="">Choose a sector</option>
+          {sectors.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        When did the change happen?
+        <input
+          name="changedAt"
+          type="date"
+          min={`${seasonId}-01-01`}
+          max={maxChangeDate}
+          required
+        />
+        <small>
+          The change must have started or materially expanded during the {seasonId}{" "}
+          award year.
+        </small>
+      </label>
+      <label>
+        Short ballot summary
         <textarea
           name="description"
           required
           minLength={30}
-          maxLength={4000}
-          rows={6}
-          placeholder="Explain what changed, what it used to be like, and why it matters. Be specific."
+          maxLength={1000}
+          rows={4}
+          placeholder="Summarize the downgrade in a few factual sentences."
         />
       </label>
       <label>
-        Bring the receipts
+        Before
         <textarea
-          name="sources"
+          name="before"
           required
-          rows={3}
-          placeholder="https://example.com/source"
+          minLength={20}
+          maxLength={1500}
+          rows={4}
+          placeholder="What did customers or the public get before this year's change?"
         />
-        <small>
-          1–3 supporting HTTP/HTTPS links, one per line. News, announcements, or
-          documented changes.
-        </small>
       </label>
+      <label>
+        After
+        <textarea
+          name="after"
+          required
+          minLength={20}
+          maxLength={1500}
+          rows={4}
+          placeholder="What changed during this award year?"
+        />
+      </label>
+      <label>
+        Damage
+        <textarea
+          name="impact"
+          required
+          minLength={20}
+          maxLength={1500}
+          rows={4}
+          placeholder="Who pays, loses access, wastes time, sees more ads, or gets less value?"
+        />
+      </label>
+      <fieldset className="source-form">
+        <legend>
+          Bring the receipts <span>(1–3)</span>
+        </legend>
+        <p className="muted">
+          Link the announcement, public record, or reporting that dates the
+          change. Older links may establish the “before,” but not eligibility.
+        </p>
+        {sources.map((source, index) => (
+          <div className="source-entry" key={source.id}>
+            <div className="image-entry-head">
+              <strong>Receipt {index + 1}</strong>
+              {sources.length > 1 && (
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() =>
+                    setSources((current) =>
+                      current.filter((item) => item.id !== source.id),
+                    )
+                  }
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <label>
+              Link title
+              <input
+                required
+                minLength={4}
+                maxLength={200}
+                value={source.title}
+                onChange={(event) =>
+                  updateSource(source.id, { title: event.target.value })
+                }
+                placeholder="Headline or document title"
+              />
+            </label>
+            <div className="source-grid">
+              <label>
+                Publisher
+                <input
+                  required
+                  minLength={2}
+                  maxLength={100}
+                  value={source.publisher}
+                  onChange={(event) =>
+                    updateSource(source.id, { publisher: event.target.value })
+                  }
+                  placeholder="Publisher or agency"
+                />
+              </label>
+              <label>
+                Published
+                <input
+                  type="date"
+                  required
+                  max={today}
+                  value={source.publishedAt}
+                  onChange={(event) =>
+                    updateSource(source.id, { publishedAt: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Source type
+                <select
+                  value={source.type}
+                  onChange={(event) =>
+                    updateSource(source.id, {
+                      type: event.target.value as NomineeSource["type"],
+                    })
+                  }
+                >
+                  {sourceTypes.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label>
+              URL
+              <input
+                type="url"
+                required
+                value={source.url}
+                onChange={(event) =>
+                  updateSource(source.id, { url: event.target.value })
+                }
+                placeholder="https://example.com/evidence"
+              />
+            </label>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="button secondary"
+          disabled={sources.length >= 3}
+          onClick={() =>
+            setSources((current) => [
+              ...current,
+              {
+                id: crypto.randomUUID(),
+                url: "",
+                title: "",
+                publisher: "",
+                publishedAt: "",
+                type: "reporting",
+              },
+            ])
+          }
+        >
+          + Add another receipt
+        </button>
+      </fieldset>
       <fieldset className="image-form">
         <legend>Images <span>(optional, up to 3)</span></legend>
         <p className="muted">Add screenshots or other evidence. The first image becomes the ballot-card cover.</p>

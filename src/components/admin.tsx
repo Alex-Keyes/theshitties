@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "./ui";
-import type { Nominee, Season } from "@/lib/constants";
+import { outcomes, type Nominee, type Season } from "@/lib/constants";
 export function AdminLogin() {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -154,8 +154,43 @@ export function AdminPanel({
               {n.company} · {n.headline}
             </strong>
             <p>
-              {n.status} · {n.count} votes
+              {n.status} · {n.count} votes · change date {n.changedAt || "missing"}
             </p>
+            <form
+              className="admin-review"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const data = new FormData(e.currentTarget);
+                act({
+                  action: "review",
+                  id: n.id,
+                  verified: data.has("verified"),
+                  outcome: data.get("outcome"),
+                });
+              }}
+            >
+              <label className="checkbox-label">
+                <input
+                  name="verified"
+                  type="checkbox"
+                  defaultChecked={n.verified}
+                />
+                Receipts verified
+              </label>
+              <label>
+                Outcome
+                <select name="outcome" defaultValue={n.outcome}>
+                  {outcomes.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button disabled={busy} className="button secondary">
+                Save review
+              </button>
+            </form>
             {n.images?.length > 0 && (
               <div className="admin-images" aria-label="Nomination images">
                 {n.images.map((image) => (

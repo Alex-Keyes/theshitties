@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { del, head } from "@vercel/blob";
 import { getDb, type Connection } from "./db";
-import { type Nominee, type NomineeImage, type Season } from "./constants";
+import {
+  outcomes,
+  type Nominee,
+  type NomineeImage,
+  type NomineeSource,
+  type Season,
+} from "./constants";
 import { nominationInput, winners } from "./validation";
 export class AppError extends Error {
   constructor(
@@ -27,13 +33,62 @@ export async function rateLimit(
       429,
     );
 }
-const select = `SELECT n.id,n.season_id AS "seasonId",n.company,n.headline,n.description,n.category,n.sources,n.images,n.status,n.duplicate_of AS "duplicateOf",n.created_at AS "createdAt",(SELECT count(*)::int FROM votes v WHERE v.nominee_id=n.id) AS count`;
+const select = `SELECT n.id,n.season_id AS "seasonId",n.company,n.headline,n.description,n.before_state AS "before",n.after_state AS "after",n.impact,n.changed_at AS "changedAt",n.category,n.sector,n.sources,n.images,n.status,n.outcome,n.verified,n.duplicate_of AS "duplicateOf",n.created_at AS "createdAt",(SELECT count(*)::int FROM votes v WHERE v.nominee_id=n.id) AS count`;
+
+function legacySource(url: string): NomineeSource {
+  let publisher = "Source";
+  try {
+    publisher = new URL(url).hostname.replace(/^www\./, "");
+  } catch {}
+  return {
+    url,
+    title: publisher,
+    publisher,
+    publishedAt: "",
+    type: "reporting",
+  };
+}
+
+export function normalizeNominee(row: Nominee): Nominee {
+  const rawSources: unknown[] = Array.isArray(row.sources) ? row.sources : [];
+  const sources = rawSources
+    .map((item): NomineeSource | null => {
+      if (typeof item === "string") return legacySource(item);
+      if (!item || typeof item !== "object") return null;
+      const value = item as Partial<NomineeSource>;
+      if (typeof value.url !== "string") return null;
+      const fallback = legacySource(value.url);
+      return {
+        url: value.url,
+        title: value.title || fallback.title,
+        publisher: value.publisher || fallback.publisher,
+        publishedAt: value.publishedAt || "",
+        type:
+          value.type &&
+          ["primary", "regulator", "reporting", "community"].includes(value.type)
+            ? value.type
+            : "reporting",
+      };
+    })
+    .filter((item): item is NomineeSource => item !== null);
+  return {
+    ...row,
+    sector: row.sector || "other",
+    sources,
+    outcome: outcomes.some((item) => item.id === row.outcome)
+      ? row.outcome
+      : "ongoing",
+    verified: Boolean(row.verified),
+  };
+}
+
 export async function listNominees(voter: string | null = null, all = false) {
   const db = await getDb();
-  return db.query<Nominee>(
+  const rows = await db.query<Nominee>(
     `${select},EXISTS(SELECT 1 FROM votes v WHERE v.nominee_id=n.id AND v.voter_id=$1::uuid) AS voted FROM nominees n ${all ? "" : "WHERE n.status='visible'"} ORDER BY count DESC,n.created_at ASC,n.id`,
     [voter],
   );
+  return rows.map(normalizeNominee);
 }
 export async function season() {
   const db = await getDb();
@@ -64,16 +119,35 @@ export async function submitNominee(input: unknown) {
   return db.transaction(async (tx) => {
     const s = await lockedSeason(tx);
     if (s.closed) throw new AppError("This year’s nominations have closed.");
+    const changedAt = new Date(`${n.changedAt}T12:00:00Z`);
+    if (changedAt.getUTCFullYear() !== s.id)
+      throw new AppError(
+        `The nominated change must have happened during the ${s.id} award year.`,
+      );
+    if (changedAt.getTime() > Date.now())
+      throw new AppError("The change date cannot be in the future.");
+    if (
+      n.sources.some(
+        (item) =>
+          new Date(`${item.publishedAt}T12:00:00Z`).getTime() > Date.now(),
+      )
+    )
+      throw new AppError("Receipt dates cannot be in the future.");
     const id = randomUUID();
     await tx.query(
-      `INSERT INTO nominees(id,season_id,company,headline,description,category,sources,images) VALUES($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb)`,
+      `INSERT INTO nominees(id,season_id,company,headline,description,before_state,after_state,impact,changed_at,category,sector,sources,images) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb)`,
       [
         id,
         s.id,
         n.company,
         n.headline,
         n.description,
+        n.before,
+        n.after,
+        n.impact,
+        n.changedAt,
         n.category,
+        n.sector,
         JSON.stringify(n.sources),
         JSON.stringify(n.images),
       ],
@@ -145,10 +219,11 @@ async function snapshotClosedSeason(tx: Connection, id: number) {
     [id],
   );
   if (existing.length) return;
-  const rows = await tx.query<Nominee>(
+  const rawRows = await tx.query<Nominee>(
     `${select},false AS voted FROM nominees n WHERE n.status='visible' AND n.season_id=$1 ORDER BY count DESC,n.created_at ASC,n.id`,
     [id],
   );
+  const rows = rawRows.map(normalizeNominee);
   await tx.query(
     "INSERT INTO results(season_id,snapshot) VALUES($1,$2::jsonb)",
     [id, JSON.stringify({ nominees: rows, ...winners(rows) })],
@@ -164,7 +239,7 @@ export async function finalize() {
 }
 export async function resultArchives() {
   await finalize();
-  return (await getDb()).query<{
+  const rows = await (await getDb()).query<{
     season_id: number;
     snapshot: {
       nominees: Nominee[];
@@ -172,6 +247,65 @@ export async function resultArchives() {
       categories: Record<string, Nominee[]>;
     };
   }>("SELECT season_id,snapshot FROM results ORDER BY season_id DESC");
+  return rows.map((row) => {
+    const nominees = row.snapshot.nominees.map(normalizeNominee);
+    return {
+      ...row,
+      snapshot: {
+        nominees,
+        ...winners(nominees),
+      },
+    };
+  });
+}
+
+export async function publicHistory() {
+  const [archives, current] = await Promise.all([
+    resultArchives(),
+    listNominees(),
+  ]);
+  const unique = new Map<string, Nominee>();
+  for (const archive of archives)
+    for (const nominee of archive.snapshot.nominees)
+      unique.set(nominee.id, nominee);
+  for (const nominee of current) unique.set(nominee.id, nominee);
+  return [...unique.values()].sort(
+    (a, b) =>
+      b.seasonId - a.seasonId ||
+      b.count - a.count ||
+      a.company.localeCompare(b.company),
+  );
+}
+
+export async function companyRollups() {
+  const groups = new Map<
+    string,
+    {
+      company: string;
+      nominations: Nominee[];
+      seasons: Set<number>;
+      votes: number;
+    }
+  >();
+  for (const nominee of await publicHistory()) {
+    const key = nominee.company.trim().toLocaleLowerCase();
+    const group = groups.get(key) ?? {
+      company: nominee.company.trim(),
+      nominations: [],
+      seasons: new Set<number>(),
+      votes: 0,
+    };
+    group.nominations.push(nominee);
+    group.seasons.add(nominee.seasonId);
+    group.votes += nominee.count;
+    groups.set(key, group);
+  }
+  return [...groups.values()].sort(
+    (a, b) =>
+      b.nominations.length - a.nominations.length ||
+      b.votes - a.votes ||
+      a.company.localeCompare(b.company),
+  );
 }
 export async function reportNominee(id: string, reason: string) {
   if (reason.trim().length < 5 || reason.length > 1000)
@@ -216,6 +350,18 @@ export async function adminAction(body: Record<string, unknown>) {
         console.error("Could not delete removed Blob image", error);
       }
     }
+    return;
+  }
+  if (body.action === "review") {
+    if (
+      typeof body.verified !== "boolean" ||
+      !outcomes.some((item) => item.id === body.outcome)
+    )
+      throw new AppError("Invalid review status.");
+    await db.query(
+      "UPDATE nominees SET verified=$1,outcome=$2 WHERE id=$3",
+      [body.verified ? 1 : 0, body.outcome, body.id],
+    );
     return;
   }
   await db.transaction(async (tx) => {

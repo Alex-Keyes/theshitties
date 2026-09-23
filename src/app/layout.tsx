@@ -27,6 +27,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Link>
           <nav aria-label="Main navigation">
             <Link href="/#nominees">Nominees</Link>
+            <Link href="/repeat-offenders">Repeat offenders</Link>
+            <Link href="/backlash-worked">Backlash worked</Link>
             <Link href="/how-it-works">How it works</Link>
             <Link href="/results">Past dishonors</Link>
           </nav>
@@ -48,6 +50,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="footer-links">
             <Link href="/how-it-works">How it works</Link>
+            <Link href="/repeat-offenders">Repeat offenders</Link>
+            <Link href="/backlash-worked">Backlash worked</Link>
             <Link href="/rules">Submission rules</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/admin">Admin</Link>
