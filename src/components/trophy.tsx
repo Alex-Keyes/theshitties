@@ -1,3 +1,68 @@
+function FlyArtwork() {
+  return (
+    <g stroke="#393126" strokeLinecap="round" strokeLinejoin="round">
+      {/* Three pairs of jointed legs, attached to the thorax. */}
+      <path
+        d="M-2-3-7-7-8-11M2-3 7-7 8-11M-3 0-9 0-12 4M3 0 9 0 12 4M-2 3-6 8-5 12M2 3 6 8 5 12"
+        fill="none"
+        strokeWidth="1"
+      />
+      <path
+        d="M-3 2C-7 8-4 13 0 14 4 13 7 8 3 2Z"
+        fill="#393126"
+        strokeWidth=".7"
+      />
+      <path
+        d="M-3.5 7Q0 9 3.5 7M-2.5 10Q0 12 2.5 10"
+        fill="none"
+        stroke="#82745b"
+        strokeWidth=".65"
+      />
+      {/* One pair of long, translucent wings with fine vein lines. */}
+      <g fill="#f5efd9" fillOpacity=".82" stroke="#8b8065" strokeWidth=".7">
+        <path d="M-1-2C-5-6-15-5-16 0-17 5-8 8-2 3Z" />
+        <path d="M1-2C5-6 15-5 16 0 17 5 8 8 2 3Z" />
+      </g>
+      <path
+        d="M-2 0-13 1M-7 .5-11 4M2 0 13 1M7 .5 11 4"
+        fill="none"
+        stroke="#a89c7d"
+        strokeWidth=".5"
+      />
+      <ellipse cy="-1" rx="3.3" ry="4.5" fill="#393126" strokeWidth=".6" />
+      <path d="M-1-3V1M1-3V1" stroke="#9b8c6e" strokeWidth=".6" />
+      <ellipse cy="-6.5" rx="3.6" ry="2.9" fill="#302b23" strokeWidth=".6" />
+      <ellipse
+        cx="-2.5"
+        cy="-7"
+        rx="1.35"
+        ry="1.8"
+        fill="#796044"
+        stroke="none"
+      />
+      <ellipse
+        cx="2.5"
+        cy="-7"
+        rx="1.35"
+        ry="1.8"
+        fill="#796044"
+        stroke="none"
+      />
+      <path d="m-1-9-.8-2m2.8 2 .8-2" fill="none" strokeWidth=".7" />
+    </g>
+  );
+}
+
+export function Fly() {
+  return (
+    <svg viewBox="-19 -15 38 32" aria-hidden="true">
+      <g transform="rotate(25)">
+        <FlyArtwork />
+      </g>
+    </svg>
+  );
+}
+
 export function Trophy() {
   return (
     <svg
@@ -32,14 +97,8 @@ export function Trophy() {
           />
         </filter>
       </defs>
-      <ellipse
-        cx="160"
-        cy="333"
-        rx="106"
-        ry="12"
-        fill="#3b281c"
-        opacity=".16"
-      />
+      <ellipse cx="160" cy="307" rx="106" ry="9" fill="#3b281c" opacity=".16" />
+      <ellipse cx="160" cy="306" rx="76" ry="3" fill="#2c2116" opacity=".24" />
       <g
         className="stink-lines"
         fill="none"
@@ -52,33 +111,9 @@ export function Trophy() {
       </g>
       <g transform="translate(260 83)">
         <g className="trophy-fly">
-          <ellipse
-            cx="0"
-            cy="0"
-            rx="5"
-            ry="8"
-            fill="#292319"
-            transform="rotate(-35)"
-          />
-          <ellipse
-            cx="-8"
-            cy="-6"
-            rx="7"
-            ry="4"
-            fill="#d8c88f"
-            opacity=".72"
-            transform="rotate(22)"
-          />
-          <ellipse
-            cx="7"
-            cy="-7"
-            rx="7"
-            ry="4"
-            fill="#d8c88f"
-            opacity=".72"
-            transform="rotate(-28)"
-          />
-          <path d="m-2 7-8 7m13-6 7 7" stroke="#292319" strokeWidth="1.5" />
+          <g transform="rotate(-30)">
+            <FlyArtwork />
+          </g>
         </g>
       </g>
       <g filter="url(#softShadow)">

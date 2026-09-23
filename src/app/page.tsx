@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowDown, ArrowUpRight } from "lucide-react";
-import { Trophy } from "@/components/trophy";
+import { Fly, Trophy } from "@/components/trophy";
 import { NomineeList } from "@/components/ui";
 import { finalize, listNominees, season } from "@/lib/service";
 import { voterId } from "@/lib/auth";
@@ -44,10 +44,10 @@ export default async function Home() {
         </div>
         <div className="trophy-panel">
           <span className="hero-fly hero-fly-one" aria-hidden="true">
-            ◆
+            <Fly />
           </span>
           <span className="hero-fly hero-fly-two" aria-hidden="true">
-            ◆
+            <Fly />
           </span>
           <span className="edition">
             THE FIRST ANNUAL
