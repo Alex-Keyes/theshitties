@@ -32,16 +32,26 @@ npm run dev
 
 No Neon connection was supplied with this project, so the actual Neon connection still needs to be configured and verified. All integration tests run against real Postgres semantics using in-memory PGlite. Demo seeding refuses production/Vercel environments and requires explicit opt-in for remote databases. Do not set `ALLOW_DEMO_SEED` in production.
 
+The reviewed 2026 editorial slate lives in `scripts/add-2026-nominees.ts`. Its
+import is deliberately opt-in and idempotent:
+
+```sh
+ALLOW_EDITORIAL_IMPORT=true npm run db:add-2026-nominees
+```
+
 ## Behavior
 
-- Public submissions publish immediately; text is rendered as text, source links are never fetched by the server, and nominations may include up to three described JPG, PNG, or WebP images. Uploaded images use Vercel Blob; pasted image URLs remain externally hosted and are loaded directly by visitors.
+- Public submissions publish immediately. Every nomination records a specific in-season change date, sector, before/after/damage case, and 1–3 structured receipts. Text is rendered as text and source links are never fetched by the server.
+- A change must begin or materially expand during the active award year. The server rejects older and future change dates; an old practice merely continuing, a new article about old conduct, or a later settlement does not qualify by itself.
+- Nominations may include up to three described JPG, PNG, or WebP images. Uploaded images use Vercel Blob; pasted image URLs remain externally hosted and are loaded directly by visitors.
 - One upvote per signed browser identifier per nomination; repeat requests are idempotent. Anonymous voting is deliberately not one-person-one-vote.
 - Server-enforced rate limits: 5 submissions/hour, 120 vote requests/minute, 10 reports/hour, 10 admin login attempts/15 minutes, per hashed connection address.
 - Vercel's trusted request IP headers supply the address. If hosting behind another proxy, configure trusted headers before launch.
 - The default season is 2026, closing `2027-01-01T05:00:00Z` (midnight in New York). Admin edits use UTC and only allow future dates while the season is open.
 - All ballot writes and finalization lock the season row. Vote totals and nominee text are snapshotted on the first homepage, results, admin visit, or moderation action after closing. The deadline is enforced even if no page is visited at the exact closing time.
 - Each category's highest count wins; the overall highest count wins The Golden Shitty. Ties, including zero-vote ties, share awards. Empty categories have no winner.
-- Reports never automatically hide entries. Admins can hide/restore, mark duplicates without transferring votes, and resolve reports. Saved annual results stay immutable when nominations are moderated later.
+- Reports never automatically hide entries. Admins can hide/restore, mark duplicates without transferring votes, resolve reports, verify receipts, and mark a change ongoing, partially fixed, reversed, or settled. Saved annual results stay immutable when nominations are moderated later.
+- Sector filters cut across the award categories. Public company records connect nominations across seasons, repeat offenders get a leaderboard, and partial fixes or reversals appear in the Backlash Worked gallery.
 - No public login, comments, downvotes, analytics, or submitter editing. Admins can remove individual nomination images.
 - To open another season, add a new row to `seasons` through a reviewed migration after finalizing the previous season. Historical snapshots remain intact. V1 admin settings edit the current deadline; they do not create seasons.
 

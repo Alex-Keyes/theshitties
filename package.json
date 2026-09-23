@@ -11,6 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:add-2026-nominees": "tsx scripts/add-2026-nominees.ts",
     "admin:password": "tsx scripts/password.ts"
   },
   "dependencies": {
