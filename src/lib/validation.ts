@@ -16,6 +16,7 @@ const image = z.object({
   kind: z.enum(["upload", "external"]),
   url: imageUrl,
   alt: z.string().trim().min(5).max(300),
+  fit: z.enum(["cover", "contain"]).optional(),
 });
 const nominationSource = z.object({
   url: source,

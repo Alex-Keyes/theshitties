@@ -44,6 +44,7 @@ const input = {
       kind: "external" as const,
       url: "https://example.com/evidence.png",
       alt: "Screenshot of the removed feature",
+      fit: "contain" as const,
     },
   ],
   website: "",
@@ -130,6 +131,7 @@ test("database-backed submission, votes, moderation, reports, limits and finaliz
   assert.equal(normalized.changedAt, "2026-06-15");
   assert.equal(normalized.sources[0].publishedAt, "2026-06-15");
   assert.equal(normalized.images[0].alt, "Screenshot of the removed feature");
+  assert.equal(normalized.images[0].fit, "contain");
   assert.equal(normalized.verified, true);
   await adminAction({
     action: "review",

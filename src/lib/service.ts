@@ -102,7 +102,14 @@ export function normalizeNominee(row: Nominee): Nominee {
         typeof value.alt !== "string"
       )
         return null;
-      return { kind: value.kind, url: value.url, alt: value.alt };
+      return {
+        kind: value.kind,
+        url: value.url,
+        alt: value.alt,
+        ...(value.fit === "cover" || value.fit === "contain"
+          ? { fit: value.fit }
+          : {}),
+      };
     })
     .filter((item): item is NomineeImage => item !== null);
   return {

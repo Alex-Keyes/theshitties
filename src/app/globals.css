@@ -384,6 +384,11 @@ em {
   display: block;
   object-fit: cover;
 }
+.nominee-cover img.image-contain,
+.image-thumb img.image-contain {
+  object-fit: contain;
+  padding: 13px;
+}
 .nominee-overline {
   display: flex;
   gap: 12px;

@@ -92,6 +92,7 @@ export type NomineeImage = {
   kind: "upload" | "external";
   url: string;
   alt: string;
+  fit?: "cover" | "contain";
 };
 export type Nominee = {
   id: string;

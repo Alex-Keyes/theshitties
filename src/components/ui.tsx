@@ -118,6 +118,12 @@ function ImageElement({
   className?: string;
   onError?: () => void;
 }) {
+  const imageClassName = [
+    className,
+    image.fit === "contain" ? "image-contain" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   let ownedBlob = false;
   try {
     ownedBlob =
@@ -132,7 +138,7 @@ function ImageElement({
       <NextImage
         src={image.url}
         alt={image.alt}
-        className={className}
+        className={imageClassName || undefined}
         fill
         sizes="(max-width: 700px) 68px, 112px"
       />
@@ -141,7 +147,7 @@ function ImageElement({
     <img
       src={image.url}
       alt={image.alt}
-      className={className}
+      className={imageClassName || undefined}
       loading="lazy"
       decoding="async"
       referrerPolicy="no-referrer"

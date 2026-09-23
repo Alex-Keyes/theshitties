@@ -42,7 +42,17 @@ export const nominees = pgTable(
         }[]
       >()
       .notNull(),
-    images: jsonb().$type<{ kind: "upload" | "external"; url: string; alt: string }[]>().notNull().default(sql`'[]'::jsonb`),
+    images: jsonb()
+      .$type<
+        {
+          kind: "upload" | "external";
+          url: string;
+          alt: string;
+          fit?: "cover" | "contain";
+        }[]
+      >()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     status: text().notNull().default("visible"),
     outcome: text().notNull().default("ongoing"),
     verified: integer().notNull().default(0),

@@ -1,6 +1,6 @@
 import { loadEnvConfig } from "@next/env";
 import { randomUUID } from "node:crypto";
-import type { NomineeSource } from "../src/lib/constants";
+import type { NomineeImage, NomineeSource } from "../src/lib/constants";
 
 loadEnvConfig(process.cwd());
 
@@ -17,8 +17,20 @@ type EditorialNominee = {
   impact: string;
   changedAt: string;
   sources: NomineeSource[];
+  images: NomineeImage[];
   outcome?: "ongoing" | "partial" | "reversed" | "settled";
 };
+
+// These Commons-hosted brand marks avoid republishing copyrighted news photos.
+// The redirect produces a browser-friendly PNG thumbnail from the source SVG.
+function commonsLogo(file: string, alt: string): NomineeImage {
+  return {
+    kind: "external",
+    url: `https://commons.wikimedia.org/wiki/Special:Redirect/file/${file}?width=800`,
+    alt,
+    fit: "contain",
+  };
+}
 
 const nominees: EditorialNominee[] = [
   {
@@ -35,6 +47,12 @@ const nominees: EditorialNominee[] = [
     impact:
       "Travelers who valued choosing after boarding lost that flexibility, while the new fare structure turns seat location and extra legroom into differentiated benefits.",
     changedAt: "2026-01-27",
+    images: [
+      commonsLogo(
+        "Southwest_Airlines_logo_2014.svg",
+        "Southwest Airlines logo",
+      ),
+    ],
     sources: [
       {
         url: "https://www.latimes.com/business/story/2026-01-27/southwests-open-seating-ends-with-final-flight",
@@ -59,6 +77,12 @@ const nominees: EditorialNominee[] = [
     impact:
       "Travelers carrying normal luggage pay more beyond the advertised fare, with the highest prices imposed at the airport and additional limitations concentrated in the cheapest fare class.",
     changedAt: "2026-04-09",
+    images: [
+      commonsLogo(
+        "American_Airlines_wordmark_%282013%29.svg",
+        "American Airlines logo",
+      ),
+    ],
     sources: [
       {
         url: "https://news.aa.com/news/news-details/2026/American-Airlines-updates-bag-fees-and-Basic-Economy-fares-OPS-POL-04/default.aspx",
@@ -83,6 +107,7 @@ const nominees: EditorialNominee[] = [
     impact:
       "A round trip with one checked bag now adds $90 beyond the displayed fare, while a third bag costs $50 more each way than it did previously.",
     changedAt: "2026-04-08",
+    images: [commonsLogo("Delta_logo.svg", "Delta Air Lines logo")],
     sources: [
       {
         url: "https://apnews.com/article/delta-air-fuel-bag-fees-5c1c2d4214ce745b03890f47850b9dd6",
@@ -115,6 +140,7 @@ const nominees: EditorialNominee[] = [
     impact:
       "Subscribers pay between $12 and $24 more per year for the same plan category, with Duo and Family customers absorbing the largest increases.",
     changedAt: "2026-02-01",
+    images: [commonsLogo("2024_Spotify_Logo.svg", "Spotify logo")],
     sources: [
       {
         url: "https://newsroom.spotify.com/2026-01-15/premium-pricing-update/",
@@ -146,6 +172,7 @@ const nominees: EditorialNominee[] = [
     impact:
       "Every plan became more expensive, including the tier that already monetizes viewing with advertising.",
     changedAt: "2026-03-26",
+    images: [commonsLogo("Netflix_2015_logo.svg", "Netflix logo")],
     sources: [
       {
         url: "https://techcrunch.com/2026/03/26/netflix-confirms-its-raising-prices-again/",
@@ -170,6 +197,7 @@ const nominees: EditorialNominee[] = [
     impact:
       "A family pays $48 more per year to retain Premium, while the cheaper Lite tier still excludes ad-free music videos and songs.",
     changedAt: "2026-04-10",
+    images: [commonsLogo("YouTube_2024.svg", "YouTube logo")],
     sources: [
       {
         url: "https://techcrunch.com/2026/04/10/youtube-premium-youtube-music-subscription-price-increase/",
@@ -194,6 +222,9 @@ const nominees: EditorialNominee[] = [
     impact:
       "Public-account holders were placed into a new image-generation workflow by default and were not designed to receive notice when somebody referenced their photos.",
     changedAt: "2026-07-07",
+    images: [
+      commonsLogo("Meta_Platforms_Inc._logo.svg", "Meta Platforms logo"),
+    ],
     outcome: "reversed",
     sources: [
       {
@@ -228,20 +259,37 @@ async function main() {
     throw new Error("The current database season is not 2026; import stopped.");
 
   let added = 0;
+  let updated = 0;
   let skipped = 0;
   await db.transaction(async (tx) => {
     for (const nominee of nominees) {
-      const existing = await tx.query<{ id: string }>(
-        "SELECT id FROM nominees WHERE season_id=2026 AND lower(company)=lower($1) AND headline=$2 LIMIT 1",
+      const existing = await tx.query<{ id: string; images: unknown }>(
+        "SELECT id,images FROM nominees WHERE season_id=2026 AND lower(company)=lower($1) AND headline=$2 LIMIT 1",
         [nominee.company, nominee.headline],
       );
       if (existing.length) {
-        skipped += 1;
+        let currentImages = existing[0].images;
+        if (typeof currentImages === "string") {
+          try {
+            currentImages = JSON.parse(currentImages);
+          } catch {
+            currentImages = [];
+          }
+        }
+        if (Array.isArray(currentImages) && currentImages.length) {
+          skipped += 1;
+          continue;
+        }
+        await tx.query("UPDATE nominees SET images=$1::jsonb WHERE id=$2", [
+          JSON.stringify(nominee.images),
+          existing[0].id,
+        ]);
+        updated += 1;
         continue;
       }
       await tx.query(
         `INSERT INTO nominees(id,season_id,company,headline,description,before_state,after_state,impact,changed_at,category,sector,sources,images,outcome,verified)
-         VALUES($1,2026,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,'[]'::jsonb,$12,1)`,
+         VALUES($1,2026,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13,1)`,
         [
           randomUUID(),
           nominee.company,
@@ -254,13 +302,16 @@ async function main() {
           nominee.category,
           nominee.sector,
           JSON.stringify(nominee.sources),
+          JSON.stringify(nominee.images),
           nominee.outcome ?? "ongoing",
         ],
       );
       added += 1;
     }
   });
-  console.log(`Added ${added} verified 2026 nominees; skipped ${skipped} existing.`);
+  console.log(
+    `Added ${added} verified 2026 nominees; updated ${updated} empty galleries; skipped ${skipped} existing galleries.`,
+  );
 }
 
 main()
