@@ -14,6 +14,7 @@ import {
   reportNominee,
   adminAction,
   finalize,
+  normalizeNominee,
   resultArchives,
 } from "../src/lib/service";
 import { nominationInput, winners } from "../src/lib/validation";
@@ -119,6 +120,17 @@ test("database-backed submission, votes, moderation, reports, limits and finaliz
     (await listNominees()).find((n) => n.id === id)?.sources[0].title,
     "June product update notes",
   );
+  const normalized = normalizeNominee({
+    ...(await listNominees()).find((n) => n.id === id)!,
+    changedAt: new Date("2026-06-15T00:00:00Z") as unknown as string,
+    sources: JSON.stringify(input.sources) as unknown as typeof input.sources,
+    images: JSON.stringify(input.images) as unknown as typeof input.images,
+    verified: 1 as unknown as boolean,
+  });
+  assert.equal(normalized.changedAt, "2026-06-15");
+  assert.equal(normalized.sources[0].publishedAt, "2026-06-15");
+  assert.equal(normalized.images[0].alt, "Screenshot of the removed feature");
+  assert.equal(normalized.verified, true);
   await adminAction({
     action: "review",
     id,

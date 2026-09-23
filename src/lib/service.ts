@@ -49,8 +49,29 @@ function legacySource(url: string): NomineeSource {
   };
 }
 
+function jsonArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function dateOnly(value: unknown): string | null {
+  if (typeof value === "string") {
+    const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+    if (match) return match[1];
+  }
+  if (value instanceof Date && Number.isFinite(value.getTime()))
+    return value.toISOString().slice(0, 10);
+  return null;
+}
+
 export function normalizeNominee(row: Nominee): Nominee {
-  const rawSources: unknown[] = Array.isArray(row.sources) ? row.sources : [];
+  const rawSources = jsonArray(row.sources);
   const sources = rawSources
     .map((item): NomineeSource | null => {
       if (typeof item === "string") return legacySource(item);
@@ -71,10 +92,25 @@ export function normalizeNominee(row: Nominee): Nominee {
       };
     })
     .filter((item): item is NomineeSource => item !== null);
+  const images = jsonArray(row.images)
+    .map((item): NomineeImage | null => {
+      if (!item || typeof item !== "object") return null;
+      const value = item as Partial<NomineeImage>;
+      if (
+        (value.kind !== "upload" && value.kind !== "external") ||
+        typeof value.url !== "string" ||
+        typeof value.alt !== "string"
+      )
+        return null;
+      return { kind: value.kind, url: value.url, alt: value.alt };
+    })
+    .filter((item): item is NomineeImage => item !== null);
   return {
     ...row,
+    changedAt: dateOnly(row.changedAt),
     sector: row.sector || "other",
     sources,
+    images,
     outcome: outcomes.some((item) => item.id === row.outcome)
       ? row.outcome
       : "ongoing",
