@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ArrowDown, ArrowUpRight } from "lucide-react";
-import { Fly, Trophy } from "@/components/trophy";
+import { Trophy } from "@/components/trophy";
 import { NomineeList } from "@/components/ui";
+import { CompanyStrip, FeaturedChanges } from "@/components/company-visuals";
 import { finalize, listNominees, season } from "@/lib/service";
 import { voterId } from "@/lib/auth";
 export const dynamic = "force-dynamic";
@@ -12,56 +13,47 @@ export default async function Home() {
     listNominees(await voterId()),
   ]);
   const closed = new Date(s.closesAt).getTime() <= Date.now();
+  const currentNominees = items.filter((n) => n.seasonId === s.id);
   return (
     <>
-      <section className="hero shell">
+      <section className="hero visual-hero shell">
         <div className="hero-copy">
           <div className="eyebrow">
             <span className="status-dot" />
             {s.id} AWARDS · {closed ? "VOTING CLOSED" : "NOMINATIONS ARE OPEN"}
           </div>
           <h1>
-            Honoring the worst
+            Brands you know.
             <br />
-            upgrades in
-            <br />
-            the <em>world.</em>
+            Changes you <em>hate.</em>
           </h1>
           <p>
-            More ads. Fewer features. Higher prices.
-            <br />
-            Nominate the products, services, and public systems that got worse
-            this year.
+            Higher prices. Smaller perks. The same old bullshit. The annual
+            awards for things that got worse.
           </p>
           <div className="hero-actions">
-            <Link className="button" href={closed ? "/results" : "/submit"}>
-              {closed ? "See the dishonorees" : "Nominate the worst"}{" "}
-              <ArrowUpRight size={17} />
+            <Link className="button" href={closed ? "/results" : "#nominees"}>
+              {closed ? "See the dishonorees" : "Vote for the worst"}{" "}
+              <ArrowDown size={17} />
             </Link>
-            <Link className="text-link" href="#nominees">
-              Meet the nominees <ArrowDown size={15} />
+            <Link className="text-link" href="/submit">
+              Nominate a downgrade <ArrowUpRight size={15} />
             </Link>
           </div>
         </div>
-        <div className="trophy-panel">
-          <span className="hero-fly hero-fly-one" aria-hidden="true">
-            <Fly />
-          </span>
-          <span className="hero-fly hero-fly-two" aria-hidden="true">
-            <Fly />
-          </span>
-          <span className="edition">
-            THE FIRST ANNUAL
-            <br />
-            <strong>SHITTY AWARDS</strong>
-          </span>
-          <Trophy />
-          <span className="trophy-caption">
-            Polished. Plated. Perfectly shitty.
-          </span>
-          <span className="orbit-text">THE CREAM ALWAYS SINKS</span>
+        <div className="hero-evidence">
+          <FeaturedChanges nominees={currentNominees} />
+          <div className="award-seal">
+            <Trophy />
+            <span>
+              A GOLDEN SHIT.
+              <br />
+              FOR A JOB BADLY DONE.
+            </span>
+          </div>
         </div>
       </section>
+      <CompanyStrip nominees={currentNominees} />
       <div className="ticker">
         <div className="shell">
           <span>PROGRESS, DOWN THE DRAIN.</span>
@@ -75,7 +67,7 @@ export default async function Home() {
       <section id="nominees" className="shell ballot">
         <div className="section-heading">
           <div>
-            <div className="eyebrow">THE PEOPLE HAVE COMPLAINTS</div>
+            <div className="eyebrow">SPOT THE DOWNGRADE. CAST YOUR VOTE.</div>
             <h2>
               The {s.id} nominees<span>.</span>
             </h2>
@@ -106,10 +98,7 @@ export default async function Home() {
             be added below.
           </div>
         )}
-        <NomineeList
-          items={items.filter((n) => n.seasonId === s.id)}
-          closed={closed}
-        />
+        <NomineeList items={currentNominees} closed={closed} />
         <p className="ballot-footnote">
           No account. No downvotes. Give a shit about as many as you like.{" "}
           <Link href="/how-it-works">How voting works ↗</Link>
@@ -124,13 +113,8 @@ export default async function Home() {
         </h2>
         <div>
           <p>
-            The app you loved. The service you paid for. The feature that
-            quietly disappeared. Somewhere along the way, “better” started
-            meaning better for someone else.
-          </p>
-          <p>
-            The Shitties gives those decisions the recognition they deserve. You
-            bring the receipts. The internet picks the winners.
+            You bring the receipts. The internet picks the winners. We give bad
+            decisions the recognition they deserve.
           </p>
           <p>
             Each year starts a fresh ballot. The archives remember who keeps

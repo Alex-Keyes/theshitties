@@ -4,6 +4,8 @@ import { listNominees, season } from "@/lib/service";
 import { voterId } from "@/lib/auth";
 import { category, sector, sourceType } from "@/lib/constants";
 import { ImageGallery, NomineeBadges, Vote, Report } from "@/components/ui";
+import { CompanyPoster } from "@/components/company-visuals";
+import { visualCase } from "@/lib/visual-cases";
 export const dynamic = "force-dynamic";
 export async function generateMetadata({
   params,
@@ -29,98 +31,139 @@ export default async function Detail({
   ]);
   const n = items.find((n) => n.id === id);
   if (!n || n.status === "hidden") notFound();
+  const summary = visualCase(n);
+  const galleryImages = summary
+    ? n.images.filter(
+        (image) =>
+          !(
+            image.url.startsWith(
+              "https://commons.wikimedia.org/wiki/Special:Redirect/file/",
+            ) && image.alt.toLowerCase().includes("logo")
+          ),
+      )
+    : n.images;
   return (
-    <article className="page narrow">
+    <article className="page visual-page">
       <Link className="back" href="/#nominees">
         ← Back to the nominees
       </Link>
-      <div className="eyebrow">
-        {n.seasonId} COMMUNITY NOMINATION · {category(n.category)?.name} ·{" "}
-        {sector(n.sector).name}
-      </div>
-      <h1>{n.headline}</h1>
-      <div className="detail-company">
-        <strong>
-          <Link href={`/companies/${encodeURIComponent(n.company)}`}>
-            {n.company} ↗
-          </Link>
-        </strong>
-        <span>
-          Change dated{" "}
-          {n.changedAt
-            ? new Date(`${n.changedAt}T12:00:00Z`).toLocaleDateString("en-US", {
-                timeZone: "UTC",
-                dateStyle: "medium",
-              })
-            : "not recorded"}
-        </span>
-      </div>
-      <NomineeBadges nominee={n} />
-      {n.status === "duplicate" ? (
-        <aside className="notice">
-          This nomination duplicates an existing entry.{" "}
-          <Link href={"/nominees/" + n.duplicateOf}>Visit the original →</Link>
-        </aside>
-      ) : (
-        <Vote
-          nominee={n}
-          closed={
-            n.seasonId !== s.id || new Date(s.closesAt).getTime() <= Date.now()
-          }
-        />
-      )}
-      <ImageGallery images={n.images || []} title={n.headline} />
-      <p className="detail-body">{n.description}</p>
-      {n.before && n.after && n.impact ? (
-        <section className="case-file" aria-label="The case">
-          <div>
-            <span>01 · Before</span>
-            <p>{n.before}</p>
+      <div className="visual-detail-head">
+        <div>
+          <div className="eyebrow">
+            {n.seasonId} COMMUNITY NOMINATION · {category(n.category)?.name} ·{" "}
+            {sector(n.sector).name}
           </div>
-          <div>
-            <span>02 · After</span>
-            <p>{n.after}</p>
-          </div>
-          <div>
-            <span>03 · Damage</span>
-            <p>{n.impact}</p>
-          </div>
-        </section>
-      ) : null}
-      <section className="sources">
-        <h2>The receipts</h2>
-        {n.sources.map((source, i) => (
-          <a
-            className="source-card"
-            key={source.url + i}
-            href={source.url}
-            target="_blank"
-            rel="nofollow noopener noreferrer"
+          <h1>{summary?.title ?? n.headline}</h1>
+          <p className="detail-summary">{summary?.note ?? n.description}</p>
+          <Link
+            className="detail-brand-link"
+            href={`/companies/${encodeURIComponent(n.company)}`}
           >
-            <span className="source-number">
-              {String(i + 1).padStart(2, "0")}
-            </span>
+            {n.company} · See the company record ↗
+          </Link>
+          <div className="detail-date">
             <span>
-              <strong>{source.title}</strong>
-              <small>
-                {source.publisher} · {sourceType(source.type).name}
-                {source.publishedAt
-                  ? ` · ${new Date(`${source.publishedAt}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", dateStyle: "medium" })}`
-                  : ""}
-              </small>
+              Change dated{" "}
+              {n.changedAt
+                ? new Date(`${n.changedAt}T12:00:00Z`).toLocaleDateString(
+                    "en-US",
+                    {
+                      timeZone: "UTC",
+                      dateStyle: "medium",
+                    },
+                  )
+                : "not recorded"}
             </span>
-            <span>↗</span>
-          </a>
-        ))}
-      </section>
-      <p className="muted">
-        A community-submitted nomination, not an official award announcement.
-        {n.verified
-          ? " An editor checked that the cited sources support the core change and date; this is not an endorsement of every opinion in the nomination."
-          : " Its receipts have not yet received an editorial verification badge."}{" "}
-        Votes reflect informal community opinion.
-      </p>
-      {n.status === "visible" && <Report id={n.id} />}
+          </div>
+          <NomineeBadges nominee={n} />
+          <div className="detail-vote">
+            {n.status === "duplicate" ? (
+              <aside className="notice">
+                This nomination duplicates an existing entry.{" "}
+                <Link href={"/nominees/" + n.duplicateOf}>
+                  Visit the original →
+                </Link>
+              </aside>
+            ) : (
+              <Vote
+                nominee={n}
+                closed={
+                  n.seasonId !== s.id ||
+                  new Date(s.closesAt).getTime() <= Date.now()
+                }
+              />
+            )}
+            <a className="text-link" href="#receipts">
+              Check the receipts ↓
+            </a>
+          </div>
+        </div>
+        <div className="detail-poster">
+          <CompanyPoster nominee={n} />
+        </div>
+      </div>
+      <div className="visual-detail-bottom">
+        <details className="case-details" open={!summary}>
+          <summary>The full story</summary>
+          <p className="detail-body">{n.description}</p>
+          {n.before && n.after && n.impact ? (
+            <section className="case-file" aria-label="The case">
+              <div>
+                <span>01 · Before</span>
+                <p>{n.before}</p>
+              </div>
+              <div>
+                <span>02 · After</span>
+                <p>{n.after}</p>
+              </div>
+              <div>
+                <span>03 · Damage</span>
+                <p>{n.impact}</p>
+              </div>
+            </section>
+          ) : null}
+        </details>
+        <ImageGallery images={galleryImages || []} title={n.headline} />
+        <section className="sources" id="receipts">
+          <div className="receipt-heading">
+            <h2>The receipts</h2>
+            <span>
+              {n.sources.length} cited source{n.sources.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          {n.sources.map((source, i) => (
+            <a
+              className="source-card"
+              key={source.url + i}
+              href={source.url}
+              target="_blank"
+              rel="nofollow noopener noreferrer"
+            >
+              <span className="source-number">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span>
+                <strong>{source.title}</strong>
+                <small>
+                  {source.publisher} · {sourceType(source.type).name}
+                  {source.publishedAt
+                    ? ` · ${new Date(`${source.publishedAt}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", dateStyle: "medium" })}`
+                    : ""}
+                </small>
+              </span>
+              <span>↗</span>
+            </a>
+          ))}
+        </section>
+        <p className="muted">
+          A community-submitted nomination, not an official award announcement.
+          {n.verified
+            ? " An editor checked that the cited sources support the core change and date; this is not an endorsement of every opinion in the nomination."
+            : " Its receipts have not yet received an editorial verification badge."}{" "}
+          Votes reflect informal community opinion.
+        </p>
+        {n.status === "visible" && <Report id={n.id} />}
+      </div>
     </article>
   );
 }

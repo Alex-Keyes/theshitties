@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ArrowUpRight } from "lucide-react";
 import "./globals.css";
+import "./visual.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://theshitties.com"),
   title: {
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body>
         <a className="skip" href="#main">
           Skip to content

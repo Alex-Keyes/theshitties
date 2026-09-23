@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { NomineeBadges } from "@/components/ui";
-import { category, sector } from "@/lib/constants";
+import { NomineeCard } from "@/components/ui";
+import { BrandMark } from "@/components/brand-mark";
 import { companyRollups } from "@/lib/service";
 
 export const dynamic = "force-dynamic";
@@ -26,36 +26,34 @@ export default async function CompanyRecord({
   );
   if (!group) notFound();
   return (
-    <div className="page narrow prose">
+    <div className="page visual-page">
       <Link className="back" href="/repeat-offenders">
         ← Repeat offenders
       </Link>
-      <div className="eyebrow">THE PERMANENT RECORD</div>
-      <h1>{group.company}</h1>
-      <p className="lede">
-        {group.nominations.length} nomination
-        {group.nominations.length === 1 ? "" : "s"} across {group.seasons.size}{" "}
-        season{group.seasons.size === 1 ? "" : "s"}, with {group.votes} total
-        votes.
-      </p>
-      <div className="record-list">
-        {group.nominations.map((nominee) => (
-          <Link
-            className="record-card outcome-card"
-            href={`/nominees/${nominee.id}`}
-            key={nominee.id}
-          >
-            <span>{nominee.seasonId}</span>
+      <div className="company-record-head">
+        <div>
+          <div className="eyebrow">THE PERMANENT RECORD</div>
+          <h1>{group.company}</h1>
+          <div className="record-stats">
             <div>
-              <small>
-                {category(nominee.category).name} · {sector(nominee.sector).name}
-              </small>
-              <h2>{nominee.headline}</h2>
-              <p>{nominee.count} votes</p>
-              <NomineeBadges nominee={nominee} />
+              <strong>{group.nominations.length}</strong>
+              <span>Nominations</span>
             </div>
-            <b>↗</b>
-          </Link>
+            <div>
+              <strong>{group.seasons.size}</strong>
+              <span>Seasons</span>
+            </div>
+            <div>
+              <strong>{group.votes}</strong>
+              <span>Votes</span>
+            </div>
+          </div>
+        </div>
+        <BrandMark company={group.company} />
+      </div>
+      <div className="ballot-grid record-grid">
+        {group.nominations.map((nominee) => (
+          <NomineeCard nominee={nominee} showVote={false} key={nominee.id} />
         ))}
       </div>
     </div>

@@ -6,6 +6,8 @@ import NextImage from "next/image";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import { ArrowUp, ArrowUpRight, Check, Flag, Loader2 } from "lucide-react";
+import { CompanyPoster } from "./company-visuals";
+import { visualCase } from "@/lib/visual-cases";
 import {
   categories,
   category,
@@ -173,7 +175,9 @@ export function ImageGallery({
       if (event.key === "Escape") setSelected(null);
       if (event.key === "ArrowLeft")
         setSelected((current) =>
-          current === null ? null : (current + images.length - 1) % images.length,
+          current === null
+            ? null
+            : (current + images.length - 1) % images.length,
         );
       if (event.key === "ArrowRight")
         setSelected((current) =>
@@ -296,95 +300,135 @@ export function NomineeList({
             ))}
           </div>
         </div>
-        <div className="filter-row">
-          <span>By sector</span>
-          <div className="filters" aria-label="Filter nominees by sector">
-            <button
-              aria-pressed={sectorFilter === "all"}
-              onClick={() => setSectorFilter("all")}
-            >
-              All sectors
-            </button>
-            {sectors.map((item) => (
-              <button
-                key={item.id}
-                aria-pressed={sectorFilter === item.id}
-                onClick={() => setSectorFilter(item.id)}
-              >
-                {item.name}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
       <div className="list-meta">
-        <span>
+        <span aria-live="polite">
           {filtered.length} NOMINATION{filtered.length === 1 ? "" : "S"} · ONE
           VERY LOW BAR
         </span>
-        <label>
-          Sort by{" "}
-          <select
-            aria-label="Sort nominees"
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-          >
-            <option value="top">Most votes</option>
-            <option value="new">Newest</option>
-          </select>
-        </label>
+        <div className="list-controls">
+          <label>
+            Industry{" "}
+            <select
+              aria-label="Filter nominees by sector"
+              value={sectorFilter}
+              onChange={(e) => setSectorFilter(e.target.value)}
+            >
+              <option value="all">All sectors</option>
+              {sectors.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Sort by{" "}
+            <select
+              aria-label="Sort nominees"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+            >
+              <option value="top">Most votes</option>
+              <option value="new">Newest</option>
+            </select>
+          </label>
+        </div>
       </div>
-      <div className="nominee-list">
+      <div className="ballot-grid">
         {filtered.length ? (
           filtered.map((n, i) => (
-            <article className="nominee" key={n.id}>
-              <span className="rank">{String(i + 1).padStart(2, "0")}</span>
-              {n.images?.[0] && (
-                <Link
-                  className="nominee-cover"
-                  href={`/nominees/${n.id}`}
-                  aria-label={`View images for ${n.company}`}
-                >
-                  <ImageElement image={n.images[0]} />
-                </Link>
-              )}
-              <div className="nominee-copy">
-                <div className="nominee-overline">
-                  <span>{n.company}</span>
-                  <span className="category-tag">
-                    {category(n.category)?.name}
-                  </span>
-                  <span className="sector-tag">{sector(n.sector).name}</span>
-                </div>
-                <Link className="nominee-title" href={"/nominees/" + n.id}>
-                  {n.headline}
-                  <ArrowUpRight size={19} />
-                </Link>
-                <p>{n.description}</p>
-                <NomineeBadges nominee={n} />
-              </div>
-              <Vote nominee={n} closed={closed} />
-            </article>
+            <NomineeCard nominee={n} closed={closed} rank={i + 1} key={n.id} />
           ))
         ) : (
           <div className="empty">
             <div className="empty-plunger" aria-hidden="true">
               ↟
             </div>
-            <h3>The bowl is clean—for now.</h3>
+            <h3>
+              {items.length
+                ? "No nominees in this mix."
+                : "The bowl is clean—for now."}
+            </h3>
             <p>
-              No nominations have hit the fan yet. Know something that got
-              worse?
+              {items.length
+                ? "Try another award or industry."
+                : "Know something that got worse? Give it the recognition it deserves."}
             </p>
-            <Link className="button" href="/submit">
-              Make the first nomination <ArrowUpRight size={16} />
-            </Link>
+            {items.length ? (
+              <button
+                className="button"
+                onClick={() => {
+                  setFilter("all");
+                  setSectorFilter("all");
+                }}
+              >
+                Clear filters
+              </button>
+            ) : (
+              <Link className="button" href="/submit">
+                Make the first nomination <ArrowUpRight size={16} />
+              </Link>
+            )}
           </div>
         )}
       </div>
     </>
   );
 }
+export function NomineeCard({
+  nominee: n,
+  closed = true,
+  rank,
+  showVote = true,
+}: {
+  nominee: Nominee;
+  closed?: boolean;
+  rank?: number;
+  showVote?: boolean;
+}) {
+  const summary = visualCase(n);
+  return (
+    <article className="ballot-card">
+      <div className="card-overline">
+        <span>
+          {rank ? `${String(rank).padStart(2, "0")} / ` : `${n.seasonId} / `}
+          {category(n.category)?.name}
+        </span>
+        <span>{sector(n.sector).name}</span>
+      </div>
+      <Link
+        className="poster-link"
+        href={`/nominees/${n.id}`}
+        aria-label={`See what changed at ${n.company}`}
+      >
+        <CompanyPoster nominee={n} />
+      </Link>
+      <div className="card-copy">
+        <div className="card-company">{n.company}</div>
+        <h3>
+          <Link href={`/nominees/${n.id}`}>{summary?.title ?? n.headline}</Link>
+        </h3>
+        <p>{summary?.note ?? n.description}</p>
+        <NomineeBadges nominee={n} />
+      </div>
+      <div className="card-actions">
+        <Link href={`/nominees/${n.id}#receipts`}>
+          {n.sources.length} receipt{n.sources.length === 1 ? "" : "s"}{" "}
+          <ArrowUpRight size={14} />
+        </Link>
+        {showVote ? (
+          <Vote nominee={n} closed={closed} />
+        ) : (
+          <Link className="card-case-link" href={`/nominees/${n.id}`}>
+            See the case <ArrowUpRight size={14} />
+          </Link>
+        )}
+      </div>
+    </article>
+  );
+}
+
 type DraftImage = {
   id: number;
   kind: "upload" | "external";
